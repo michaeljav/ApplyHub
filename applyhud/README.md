@@ -53,16 +53,17 @@ Si quieres poner el proyecto a funcionar rápido:
    ```
 
 6. Crea un usuario ADMIN en la BD (con password **HASH** bcrypt).  
-   Ejemplo SQL:
+    Ejemplo SQL:
 
    ```sql
-   INSERT INTO "Usuario" ("nombre", "email", "password", "rol", "activo")
+   INSERT INTO "Usuario" ("nombre", "email", "password", "rol", "activo", "createdAt", "updatedAt")
    VALUES (
-     'Admin IAD',
-     'admin@iad.gob.do',
-     '$2a$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-     'ADMIN',
-     true
+   'Admin IAD',
+   'admin@iad.gob.do',
+   '$2a$10$yfKBtMfXPADmlGhUS6OaYu.7KR8jtGXTzI4lDcwBHfWCQGi0RklH6',
+   'ADMIN',
+   true,
+   NOW(),NOW()
    );
    ```
 
@@ -275,3 +276,19 @@ npm install
 Verifica tu versión de Node (mínimo 18+).
 
 ---
+
+# 8 Crear vacantes usando Prisma Studio (GUI sobre la BD)
+
+Como estamos usando Prisma, lo más limpio ahora mismo es usar su panel web para crear los primeros registros.
+
+En la raíz del proyecto:
+
+npx prisma studio
+
+o si tienes script en package.json:
+
+npm run prisma:studio
+
+Eso te abre en el navegador algo como:
+
+http://localhost:5555

@@ -1,6 +1,7 @@
 import { Vacante, VacanteDocumento } from '@prisma/client';
 import dayjs from 'dayjs';
 import Link from 'next/link';
+import { getBaseUrl } from '@/lib/baseUrl';
 
 interface VacanteDetalle extends Vacante {
   documentosRequeridos: VacanteDocumento[];
@@ -8,19 +9,27 @@ interface VacanteDetalle extends Vacante {
 }
 
 async function getVacante(id: string): Promise<VacanteDetalle> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/vacantes/${id}`, {
+  const baseUrl = getBaseUrl();
+
+  const res = await fetch(new URL(`/api/vacantes/${id}`, baseUrl), {
     cache: 'no-store'
   });
+
   if (!res.ok) throw new Error('Error cargando vacante');
   return res.json();
 }
 
-export default async function VacantePage({ params }: { params: { id: string } }) {
+export default async function VacantePage({
+  params
+}: {
+  params: { id: string };
+}) {
   const vacante = await getVacante(params.id);
   const hoy = dayjs();
   const inicio = dayjs(vacante.fechaInicio);
   const fin = dayjs(vacante.fechaFin);
-  const dentroDeFechas = !inicio.isAfter(hoy, 'day') && !fin.isBefore(hoy, 'day');
+  const dentroDeFechas =
+    !inicio.isAfter(hoy, 'day') && !fin.isBefore(hoy, 'day');
   const limiteAlcanzado =
     vacante.limitePostulantes != null &&
     vacante._count.postulaciones >= vacante.limitePostulantes;

@@ -1,9 +1,9 @@
-import type { NextAuthConfig } from 'next-auth';
+import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
-export const authConfig: NextAuthConfig = {
+export const authConfig: NextAuthOptions = {
   providers: [
     Credentials({
       name: 'Credentials',
@@ -17,7 +17,10 @@ export const authConfig: NextAuthConfig = {
           where: { email: credentials.email }
         });
         if (!user || !user.activo) return null;
-        const isValid = await bcrypt.compare(credentials.password, user.password);
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
         if (!isValid) return null;
         return {
           id: String(user.id),

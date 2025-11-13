@@ -1,12 +1,18 @@
+'use client';
+
 import { Vacante } from '@prisma/client';
 import { Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import Link from 'next/link';
+import { getBaseUrl } from '@/lib/baseUrl';
 
 async function getVacantes(): Promise<VacanteWithCount[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/vacantes`, {
+  const baseUrl = getBaseUrl();
+
+  const res = await fetch(new URL('/api/vacantes', baseUrl), {
     cache: 'no-store'
   });
+
   if (!res.ok) throw new Error('Error cargando vacantes');
   return res.json();
 }
@@ -21,7 +27,8 @@ function calcularEstado(v: VacanteWithCount): string {
   const fin = dayjs(v.fechaFin);
   if (inicio.isAfter(hoy, 'day')) return 'Próxima';
   if (fin.isBefore(hoy, 'day')) return 'Cerrada';
-  if (v.limitePostulantes && v._count.postulaciones >= v.limitePostulantes) return 'Límite alcanzado';
+  if (v.limitePostulantes && v._count.postulaciones >= v.limitePostulantes)
+    return 'Límite alcanzado';
   return 'Abierta';
 }
 
