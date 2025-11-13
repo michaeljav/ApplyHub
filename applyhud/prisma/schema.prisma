@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vacante {
+  id                   Int                  @id @default(autoincrement())
+  titulo               String
+  requisitos           String
+  beneficios           String
+  fechaInicio          DateTime
+  fechaFin             DateTime
+  limitePostulantes    Int?
+  documentosRequeridos VacanteDocumento[]
+  postulaciones        Postulacion[]
+  createdAt            DateTime             @default(now())
+}
+
+model VacanteDocumento {
+  id            Int      @id @default(autoincrement())
+  vacanteId     Int
+  nombre        String
+  descripcion   String?
+  obligatorio   Boolean
+  extensiones   String[]
+  tamanoMaxMB   Int?
+  orden         Int
+
+  vacante       Vacante @relation(fields: [vacanteId], references: [id])
+}
+
+model Postulacion {
+  id              Int                 @id @default(autoincrement())
+  vacanteId       Int
+  nombres         String
+  apellidos       String
+  cedula          String
+  email           String
+  telefono        String
+  esDominicano    Boolean
+  noJubilado      Boolean
+  aceptoTerminos  Boolean
+  fecha           DateTime            @default(now())
+  estadoInterno   String              @default("pendiente")
+  archivos        PostulacionArchivo[]
+  vacante         Vacante             @relation(fields: [vacanteId], references: [id])
+
+  @@unique([vacanteId, cedula])
+}
+
+model PostulacionArchivo {
+  id              Int      @id @default(autoincrement())
+  postulacionId   Int
+  nombreLogico    String
+  nombreFinal     String
+  ruta            String
+  createdAt       DateTime @default(now())
+
+  postulacion     Postulacion @relation(fields: [postulacionId], references: [id])
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  email     String   @unique
+  password  String
+  rol       String
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
