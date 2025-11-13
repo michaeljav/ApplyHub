@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import RequireAuth from '@/components/auth/RequireAuth';
 
 interface Postulacion {
   id: number;
@@ -96,22 +97,24 @@ export default function PostulantesPorVacantePage() {
   };
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>Postulantes</h1>
-      <Button
-        onClick={descargarZip}
-        style={{ marginBottom: 16 }}
-        loading={downloadingZip}
-        disabled={downloadingZip}
-      >
-        Descargar ZIP general
-      </Button>
-      <Table
-        rowKey="id"
-        loading={isLoading}
-        dataSource={data || []}
-        columns={columns}
-      />
-    </main>
+    <RequireAuth roles={['ADMIN', 'RRHH']}>
+      <main style={{ padding: 24 }}>
+        <h1>Postulantes</h1>
+        <Button
+          onClick={descargarZip}
+          style={{ marginBottom: 16 }}
+          loading={downloadingZip}
+          disabled={downloadingZip}
+        >
+          Descargar ZIP general
+        </Button>
+        <Table
+          rowKey="id"
+          loading={isLoading}
+          dataSource={data || []}
+          columns={columns}
+        />
+      </main>
+    </RequireAuth>
   );
 }

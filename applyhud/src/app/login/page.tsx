@@ -1,15 +1,17 @@
 'use client';
 
-import { Button, Card, Form, Input, Typography, Alert } from 'antd';
-import { signIn } from 'next-auth/react';
+import { Button, Card, Form, Input, Typography, Alert, Spin } from 'antd';
+import { signIn, useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { status } = useSession();
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -28,6 +30,27 @@ export default function LoginPage() {
       router.push(callbackUrl);
     }
   };
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    const callbackUrl = searchParams.get('callbackUrl') || '/admin/vacantes';
+    router.replace(callbackUrl);
+  }, [status, router, searchParams]);
+
+  if (status === 'loading' || status === 'authenticated') {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <Spin tip="Redirigiendo..." />
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -51,6 +74,9 @@ export default function LoginPage() {
         <Typography.Paragraph type="secondary" style={{ marginTop: 8, fontSize: 12 }}>
           Solo usuarios autorizados del IAD.
         </Typography.Paragraph>
+        <Button type="link" block>
+          <Link href="/vacantes">← Volver a vacantes públicas</Link>
+        </Button>
       </Card>
     </div>
   );

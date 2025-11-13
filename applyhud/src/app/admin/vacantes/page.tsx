@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import Link from 'next/link';
 import VacanteForm from '@/components/admin/VacanteForm';
 import { useState } from 'react';
+import RequireAuth from '@/components/auth/RequireAuth';
 
 interface Vacante {
   id: number;
@@ -94,10 +95,11 @@ export default function AdminVacantesPage() {
   const toggleForm = () => setShowForm((prev) => !prev);
 
   return (
-    <main style={{ padding: 24 }}>
-      <div
-        style={{
-          display: 'flex',
+    <RequireAuth roles={['ADMIN', 'RRHH']}>
+      <main style={{ padding: 24 }}>
+        <div
+          style={{
+            display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 16,
@@ -128,5 +130,6 @@ export default function AdminVacantesPage() {
         style={{ marginTop: 32 }}
       />
     </main>
+    </RequireAuth>
   );
 }
