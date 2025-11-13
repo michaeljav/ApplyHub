@@ -1,10 +1,12 @@
 'use client';
 
-import { Table, Tag } from 'antd';
+import { Table, Tag, Button } from 'antd';
+import { PlusOutlined, CloseOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import Link from 'next/link';
 import VacanteForm from '@/components/admin/VacanteForm';
+import { useState } from 'react';
 
 interface Vacante {
   id: number;
@@ -26,6 +28,7 @@ function calcularEstado(v: Vacante): string {
 }
 
 export default function AdminVacantesPage() {
+  const [showForm, setShowForm] = useState(false);
   const { data, isLoading } = useQuery<Vacante[]>({
     queryKey: ['admin-vacantes'],
     queryFn: async () => {
@@ -88,10 +91,35 @@ export default function AdminVacantesPage() {
     }
   ];
 
+  const toggleForm = () => setShowForm((prev) => !prev);
+
   return (
     <main style={{ padding: 24 }}>
-      <h1>Vacantes (Recursos Humanos)</h1>
-      <VacanteForm />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 16,
+          flexWrap: 'wrap'
+        }}
+      >
+        <h1 style={{ margin: 0 }}>Vacantes (Recursos Humanos)</h1>
+        <Button
+          type="primary"
+          icon={showForm ? <CloseOutlined /> : <PlusOutlined />}
+          onClick={toggleForm}
+        >
+          {showForm ? 'Cerrar formulario' : 'Crear vacante'}
+        </Button>
+      </div>
+      {showForm && (
+        <VacanteForm
+          onCreated={() => {
+            setShowForm(false);
+          }}
+        />
+      )}
       <Table
         rowKey="id"
         loading={isLoading}

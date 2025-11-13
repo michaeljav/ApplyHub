@@ -52,7 +52,11 @@ type CreatePayload = {
   }>;
 };
 
-export default function VacanteForm() {
+interface VacanteFormProps {
+  onCreated?: () => void;
+}
+
+export default function VacanteForm({ onCreated }: VacanteFormProps) {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
   const [messageApi, contextHolder] = message.useMessage();
@@ -76,6 +80,7 @@ export default function VacanteForm() {
       messageApi.success('Vacante creada correctamente');
       form.resetFields();
       queryClient.invalidateQueries({ queryKey: ['admin-vacantes'] });
+      onCreated?.();
     },
     onError: (error: Error) => {
       messageApi.error(error.message);
