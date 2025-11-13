@@ -1,6 +1,6 @@
-# Selección IAD – Portal de Vacantes y Gestión de Postulaciones
+# Selección – Portal de Vacantes y Gestión de Postulaciones
 
-Este proyecto es un portal completo para la **solicitud de documentos personales para selección y designación de profesionales y técnicos**, pensado para el Instituto Agrario Dominicano (IAD).
+Este proyecto es un portal completo para la **solicitud de documentos personales para selección y designación de profesionales y técnicos**.
 
 Incluye:
 
@@ -18,18 +18,82 @@ Incluye:
 
 ---
 
-## 1. Requisitos previos
+# 🚀 0. Pasos Rápidos (TL;DR)
 
-- Node.js 18+
-- PostgreSQL en ejecución
-- npm (o pnpm / yarn si prefieres adaptarlo)
-- Crear una base de datos vacía para este proyecto.
+Si quieres poner el proyecto a funcionar rápido:
+
+1. Descomprime el proyecto.
+2. Crea `.env` en la raíz con:
+
+   ```env
+   DATABASE_URL="postgresql://usuario:password@localhost:5432/appyhub_db"
+   UPLOAD_DIR="./uploads"
+   PERMITIR_MULTIPLES_VACANTES="false"
+   AUTH_SECRET="cambia-esto"
+   NEXTAUTH_SECRET="cambia-esto"
+   NEXTAUTH_URL="http://localhost:3000"
+   ```
+
+3. Instala dependencias:
+
+   ```bash
+   npm install
+   ```
+
+4. Crea carpeta de uploads:
+
+   ```bash
+   mkdir uploads
+   ```
+
+5. Ejecuta migraciones Prisma:
+
+   ```bash
+   npm run prisma:migrate
+   ```
+
+6. Crea un usuario ADMIN en la BD (con password **HASH** bcrypt).  
+   Ejemplo SQL:
+
+   ```sql
+   INSERT INTO "Usuario" ("nombre", "email", "password", "rol", "activo")
+   VALUES (
+     'Admin IAD',
+     'admin@iad.gob.do',
+     '$2a$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+     'ADMIN',
+     true
+   );
+   ```
+
+7. Inicia el proyecto:
+
+   ```bash
+   npm run dev
+   ```
+
+8. Abre:
+
+   - Portal público: http://localhost:3000/vacantes
+   - Login RRHH/Admin: http://localhost:3000/login
+   - Panel RRHH: http://localhost:3000/admin/vacantes
+
+¡Listo!
 
 ---
 
-## 2. Instalación
+# 1. Requisitos previos
 
-1. Clonar o descomprimir este proyecto.
+- Node.js 18+
+- PostgreSQL corriendo localmente
+- Una base de datos creada para este proyecto
+- npm (o el manejador que prefieras)
+
+---
+
+# 2. Instalación
+
+1. Clonar o descomprimir este repositorio.
 
 2. Instalar dependencias:
 
@@ -37,7 +101,7 @@ Incluye:
 npm install
 ```
 
-3. Crear el archivo `.env` en la raíz del proyecto con al menos:
+3. Crear el archivo `.env` en la raíz del proyecto:
 
 ```env
 DATABASE_URL="postgresql://usuario:password@localhost:5432/seleccion_iad"
@@ -48,142 +112,166 @@ NEXTAUTH_SECRET="cambia-esto-por-un-string-seguro"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
-- `DATABASE_URL`: cadena de conexión a tu PostgreSQL.
-- `UPLOAD_DIR`: carpeta donde se guardarán los archivos subidos.
+### Detalles:
+
+- `DATABASE_URL`: cadena de conexión PostgreSQL.
+- `UPLOAD_DIR`: ruta donde se guardarán los archivos de los postulantes.
 - `PERMITIR_MULTIPLES_VACANTES`:
-  - `"false"` → una cédula solo puede postularse a **una vacante total**.
-  - `"true"` → puede postular a varias vacantes distintas (nunca dos veces a la misma).
-- `AUTH_SECRET` / `NEXTAUTH_SECRET`: claves para la firma del JWT de Auth.js.
+  - `"false"` → una cédula solo puede postularse a una vacante total.
+  - `"true"` → puede postularse a varias vacantes (nunca a la misma dos veces).
+- `AUTH_SECRET` y `NEXTAUTH_SECRET`: claves para firmar JWTs.
 - `NEXTAUTH_URL`: URL base del proyecto.
 
-4. Ejecutar migraciones de Prisma:
+4. Ejecutar migraciones Prisma:
 
 ```bash
 npm run prisma:migrate
 ```
 
-5. Generar el cliente de Prisma (opcional si `migrate` ya lo ejecutó):
+5. Generar Prisma Client:
 
 ```bash
 npm run prisma:generate
 ```
 
-6. Crear al menos un usuario ADMIN y/o RRHH en la tabla `Usuario`.
+6. Crear un usuario ADMIN / RRHH en la tabla `Usuario`.
 
-Puedes hacerlo con un script de seed o manualmente (ejemplo en SQL):
+Ejemplo SQL (contraseña en hash bcrypt):
 
 ```sql
 INSERT INTO "Usuario" ("nombre", "email", "password", "rol", "activo")
 VALUES (
   'Admin IAD',
   'admin@iad.gob.do',
-  '$2a$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', -- hash bcrypt
+  '$2a$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
   'ADMIN',
   true
 );
 ```
 
-> Genera el hash con bcrypt (ej. usando un pequeño script Node).
-
 ---
 
-## 3. Ejecutar el proyecto
+# 3. Ejecutar el proyecto
 
 ```bash
 npm run dev
 ```
 
-Abrir en el navegador:
+Abrir:
 
-- Portal público de vacantes: http://localhost:3000/vacantes
-- Login RRHH/Admin: http://localhost:3000/login
-- Panel de vacantes RRHH: http://localhost:3000/admin/vacantes
-
----
-
-## 4. Flujo de uso
-
-### 4.1. Portal público
-
-- `/vacantes` muestra la lista de vacantes activas (según fechas y límite).
-- `/vacantes/[id]` muestra el detalle de la vacante.
-- `/vacantes/[id]/aplicar` permite que un postulante complete el formulario y suba documentos.
-
-El backend valida:
-
-- Fechas de la vacante.
-- Límite de postulantes (si existe).
-- Regla de negocio de cantidad de vacantes por cédula.
-- Que no se repita la misma vacante para la misma cédula.
-
-Los archivos se guardan en la carpeta `UPLOAD_DIR` con nombres únicos.
-
-### 4.2. Panel de Recursos Humanos
-
-- `/admin/vacantes`: vista de todas las vacantes con:
-  - Título, fechas, límite, cantidad de postulantes, estado calculado.
-  - Acción **“Ver postulantes”** para cada vacante.
-
-- `/admin/vacantes/[id]/postulaciones`:
-  - Lista de postulantes de esa vacante.
-  - Ver nombre completo, cédula, correo, teléfono, fecha, estado interno.
-  - Acción **“Ver detalle”**.
-  - Botón para **descargar ZIP general** de la vacante (un folder por postulante).
-
-- `/admin/postulaciones/[id]`:
-  - Vista detallada del postulante:
-    - Datos personales.
-    - Vacante a la que aplicó.
-    - Confirmaciones (es dominicano, no jubilado, aceptó términos).
-    - Requisitos y beneficios de la vacante.
-    - Lista de documentos subidos con enlaces de descarga.
-    - Selector de **estado interno** (pendiente, revisado, completo, descartado).
-  - Botones:
-    - Descargar **PDF** del postulante.
-    - Descargar **ZIP** del postulante (PDF + documentos).
-
-### 4.3. Seguridad
-
-- Autenticación con Auth.js (NextAuth) usando Credentials Provider (email + password).
-- JWT con rol (`ADMIN` / `RRHH`).
-- Middleware protege rutas `/admin/**` y `/api/admin/**`.
-- Rutas de descarga de archivos `/api/files/[id]` están protegidas por backend (requieren sesión con rol).
+- Vacantes públicas: http://localhost:3000/vacantes
+- Login RRHH: http://localhost:3000/login
+- Panel RRHH: http://localhost:3000/admin/vacantes
 
 ---
 
-## 5. Estructura principal de carpetas
+# 4. Flujo de Uso
 
-- `src/app`
-  - `page.tsx` → redirige a `/vacantes`.
-  - `login/` → pantalla de login.
-  - `vacantes/` → portal público de vacantes.
-  - `admin/` → panel de RRHH.
-  - `api/` → rutas de API (vacantes, postulaciones, auth, pdf, zip, archivos).
-- `src/lib`
-  - `prisma.ts` → cliente Prisma.
-  - `auth.ts` → configuración Auth.js.
-  - `upload.ts` → helper para guardar archivos.
-  - `config.ts` → lectura de `PERMITIR_MULTIPLES_VACANTES`.
-- `prisma/`
-  - `schema.prisma` → modelos de datos.
+## 4.1. Portal Público
 
----
+Rutas:
 
-## 6. Notas
+- `/vacantes` → lista de vacantes activas
+- `/vacantes/[id]` → detalle de vacante
+- `/vacantes/[id]/aplicar` → formulario de postulación
 
-- El proyecto está pensado para correr **sin Docker inicialmente**, solo con Node + PostgreSQL.
-- Si en el futuro deseas contenedores, puedes agregar un `Dockerfile` y `docker-compose.yml` usando esta base.
-- Puedes extender las validaciones (ej. formato de cédula dominicana) según tus necesidades.
+Validaciones backend:
+
+- Fechas (inicio/fin)
+- Límite de postulantes
+- Regla global de una o múltiples vacantes
+- No repetir la misma vacante por cédula
+
+Archivos:
+
+- Guardados en `UPLOAD_DIR`
+- Con nombres únicos generados automáticamente
 
 ---
 
-## 7. Soporte
+## 4.2. Panel de Recursos Humanos
 
-Si al montar el proyecto surge algún error de dependencias, ejecuta:
+### `/admin/vacantes`
+
+- Título, fechas, límite, cantidad de postulantes
+- Estado calculado (Próxima, Abierta, Cerrada, Límite alcanzado)
+- Filtros y ordenamiento
+- Botón **Ver postulantes**
+
+### `/admin/vacantes/[id]/postulaciones`
+
+- Lista de postulantes
+- Nombre completo, cédula, email, teléfono, fecha
+- Estado interno
+- Búsquedas
+- Filtros
+- Exportar CSV/Excel
+- Descargar **ZIP general** (PDF + documentos por postulante)
+
+### `/admin/postulaciones/[id]`
+
+- Datos del postulante
+- Confirmaciones legales
+- Información de la vacante
+- Lista de documentos subidos con enlaces protegidos
+- Cambiar estado interno
+- Descargar PDF del postulante
+- Descargar ZIP del postulante
+
+---
+
+## 4.3. Seguridad
+
+- Autenticación implementada con **Auth.js (NextAuth)**:
+  - Credentials Provider (email + password)
+  - JWT firmado
+  - Rol: `ADMIN` o `RRHH`
+- Middleware protege:
+  - `/admin/**`
+  - `/api/**` que regresen datos sensibles
+- Archivos protegidos: nunca se sirven desde el filesystem directamente.
+  - Se usan endpoints seguros que requieren sesión y rol.
+
+---
+
+# 5. Estructura de Carpetas
+
+```
+src/
+  app/
+    login/
+    vacantes/
+    admin/
+    api/
+  lib/
+    auth.ts
+    prisma.ts
+    upload.ts
+    config.ts
+prisma/
+  schema.prisma
+uploads/  (se crea al ejecutar el proyecto)
+```
+
+---
+
+# 6. Notas
+
+- El proyecto está preparado para correr **sin Docker por ahora**.
+- Puedes agregar Docker cuando lo desees.
+- Validaciones adicionales (ej. cédula dominicana) pueden añadirse fácilmente.
+
+---
+
+# 7. Troubleshooting
+
+Si tienes errores:
 
 ```bash
 rm -rf node_modules package-lock.json
 npm install
 ```
 
-Y asegúrate de que tu versión de Node sea 18 o superior.
+Verifica tu versión de Node (mínimo 18+).
+
+---
