@@ -2,7 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
-import { Descriptions, Select, Button, List } from 'antd';
+import { Descriptions, Select, Button, List, message } from 'antd';
+import { useState } from 'react';
 
 interface PostulacionArchivo {
   id: number;
@@ -36,6 +37,8 @@ export default function PostulacionDetallePage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const qc = useQueryClient();
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingZip, setDownloadingZip] = useState(false);
 
   const { data, isLoading } = useQuery<PostulacionDetalle>({
     queryKey: ['postulacion', id],
@@ -61,13 +64,46 @@ export default function PostulacionDetallePage() {
     }
   });
 
-  const descargarPDF = () => {
-    window.location.href = `/api/postulaciones/${id}/pdf`;
+  const descargarArchivo = async (
+    url: string,
+    filename: string,
+    setLoading: (state: boolean) => void
+  ) => {
+    if (setLoading === setDownloadingPdf && downloadingPdf) return;
+    if (setLoading === setDownloadingZip && downloadingZip) return;
+    setLoading(true);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      message.error('No se pudo descargar el archivo');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const descargarZIP = () => {
-    window.location.href = `/api/postulaciones/${id}/zip`;
-  };
+  const descargarPDF = () =>
+    descargarArchivo(
+      `/api/postulaciones/${id}/pdf`,
+      `postulacion-${id}.pdf`,
+      setDownloadingPdf
+    );
+
+  const descargarZIP = () =>
+    descargarArchivo(
+      `/api/postulaciones/${id}/zip`,
+      `postulacion-${id}.zip`,
+      setDownloadingZip
+    );
 
   if (isLoading || !data) return <main style={{ padding: 24 }}>Cargando...</main>;
 
@@ -132,10 +168,21 @@ export default function PostulacionDetallePage() {
       />
 
       <div style={{ marginTop: 24 }}>
-        <Button onClick={descargarPDF} style={{ marginRight: 8 }}>
+        <Button
+          onClick={descargarPDF}
+          style={{ marginRight: 8 }}
+          loading={downloadingPdf}
+          disabled={downloadingPdf}
+        >
           Descargar PDF
         </Button>
-        <Button onClick={descargarZIP}>Descargar ZIP</Button>
+        <Button
+          onClick={descargarZIP}
+          loading={downloadingZip}
+          disabled={downloadingZip}
+        >
+          Descargar ZIP
+        </Button>
       </div>
     </main>
   );

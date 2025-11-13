@@ -1,10 +1,11 @@
 'use client';
 
-import { Table, Button } from 'antd';
+import { Table, Button, message } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
 interface Postulacion {
   id: number;
@@ -20,6 +21,7 @@ interface Postulacion {
 export default function PostulantesPorVacantePage() {
   const params = useParams<{ id: string }>();
   const vacanteId = params.id;
+  const [downloadingZip, setDownloadingZip] = useState(false);
 
   const { data, isLoading } = useQuery<Postulacion[]>({
     queryKey: ['postulaciones', vacanteId],
@@ -71,14 +73,37 @@ export default function PostulantesPorVacantePage() {
     }
   ];
 
-  const descargarZip = () => {
-    window.location.href = `/api/vacantes/${vacanteId}/zip`;
+  const descargarZip = async () => {
+    if (!vacanteId || downloadingZip) return;
+    setDownloadingZip(true);
+    try {
+      const res = await fetch(`/api/vacantes/${vacanteId}/zip`);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `vacante-${vacanteId}-postulaciones.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      message.error('No se pudo descargar el ZIP');
+    } finally {
+      setDownloadingZip(false);
+    }
   };
 
   return (
     <main style={{ padding: 24 }}>
       <h1>Postulantes</h1>
-      <Button onClick={descargarZip} style={{ marginBottom: 16 }}>
+      <Button
+        onClick={descargarZip}
+        style={{ marginBottom: 16 }}
+        loading={downloadingZip}
+        disabled={downloadingZip}
+      >
         Descargar ZIP general
       </Button>
       <Table

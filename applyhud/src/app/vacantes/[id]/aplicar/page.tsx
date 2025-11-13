@@ -30,6 +30,7 @@ const normalizeUpload = (e: any) => {
 export default function AplicarPage({ params }: { params: { id: string } }) {
   const [vacante, setVacante] = useState<VacanteDetalle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
   }, [params.id]);
 
   const onFinish = async (values: any) => {
+    setSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('vacanteId', params.id);
@@ -74,6 +76,8 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
       router.push('/vacantes');
     } catch (e: any) {
       message.error(e.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -138,7 +142,7 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
           ))}
 
         <Form.Item>
-          <Button type="primary" htmlType="submit">
+          <Button type="primary" htmlType="submit" loading={submitting} disabled={submitting}>
             Enviar postulación
           </Button>
         </Form.Item>
@@ -146,3 +150,4 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
     </main>
   );
 }
+
