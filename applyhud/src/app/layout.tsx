@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Providers from './Providers';
+import AppShell from '@/components/AppShell';
 import 'antd/dist/reset.css';
 import './globals.css';
 
@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        <Providers>{children}</Providers>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

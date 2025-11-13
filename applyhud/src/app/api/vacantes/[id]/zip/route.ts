@@ -3,13 +3,13 @@ import prisma from '@/lib/prisma';
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import path from 'path';
-import PDFDocument from 'pdfkit';
+import { generarPdfPostulacion } from '@/lib/postulacionPdf';
 
 interface Params {
   params: { id: string };
 }
 
-export async function GET(req: Request, { params }: Params) {
+export async function GET(_: Request, { params }: Params) {
   const id = Number(params.id);
   const vacante = await prisma.vacante.findUnique({
     where: { id },
@@ -24,37 +24,9 @@ export async function GET(req: Request, { params }: Params) {
   for (const post of vacante.postulaciones) {
     const folder = `postulacion-${post.id}/`;
 
-    // PDF
-    const pdfDoc = new PDFDocument();
-    const chunks: Buffer[] = [];
-    pdfDoc.on('data', (chunk) => chunks.push(chunk as Buffer));
-    const endPromise = new Promise<Buffer>((resolve) => {
-      pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
-    });
+    const pdfBuffer = await generarPdfPostulacion(vacante.titulo, post);
+    zip.addFile(path.join(folder, 'postulante.pdf'), pdfBuffer);
 
-    pdfDoc.fontSize(16).text('Expediente de Postulación', { underline: true });
-    pdfDoc.moveDown();
-    pdfDoc.fontSize(12).text(`Vacante: ${vacante.titulo}`);
-    pdfDoc.text(`Nombre: ${post.nombres} ${post.apellidos}`);
-    pdfDoc.text(`Cédula: ${post.cedula}`);
-    pdfDoc.text(`Correo: ${post.email}`);
-    pdfDoc.text(`Teléfono: ${post.telefono}`);
-    pdfDoc.text(`Fecha: ${post.fecha.toISOString()}`);
-    pdfDoc.moveDown();
-    pdfDoc.text(`Es dominicano: ${post.esDominicano ? 'Sí' : 'No'}`);
-    pdfDoc.text(`No jubilado/pensionado: ${post.noJubilado ? 'Sí' : 'No'}`);
-    pdfDoc.text(`Aceptó términos: ${post.aceptoTerminos ? 'Sí' : 'No'}`);
-    pdfDoc.moveDown();
-    pdfDoc.text('Documentos:');
-    post.archivos.forEach((a) => {
-      pdfDoc.text(`- ${a.nombreLogico}: ${a.nombreFinal}`);
-    });
-
-    pdfDoc.end();
-    const pdfBuffer = await endPromise;
-    zip.addFile(path.join(folder, `postulante.pdf`), pdfBuffer);
-
-    // documentos
     for (const archivo of post.archivos) {
       if (fs.existsSync(archivo.ruta)) {
         const fileBuffer = fs.readFileSync(archivo.ruta);

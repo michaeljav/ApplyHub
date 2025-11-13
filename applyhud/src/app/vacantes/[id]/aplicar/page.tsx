@@ -4,6 +4,7 @@ import { Form, Input, Checkbox, Button, Upload, message } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import type { UploadFile } from 'antd/es/upload/interface';
 
 interface VacanteDocumento {
   id: number;
@@ -18,6 +19,13 @@ interface VacanteDetalle {
   titulo: string;
   documentosRequeridos: VacanteDocumento[];
 }
+
+const normalizeUpload = (e: any) => {
+  if (Array.isArray(e)) {
+    return e;
+  }
+  return e?.fileList ?? [];
+};
 
 export default function AplicarPage({ params }: { params: { id: string } }) {
   const [vacante, setVacante] = useState<VacanteDetalle | null>(null);
@@ -45,10 +53,10 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
       formData.append('aceptoTerminos', values.aceptoTerminos ? 'true' : 'false');
 
       (vacante?.documentosRequeridos || []).forEach((doc) => {
-        const field = values[`doc_${doc.id}`];
-        if (field && field.file) {
-          formData.append(`doc_${doc.id}`, field.file.originFileObj);
-          formData.append(`doc_${doc.id}_nombreLogico`, doc.nombre);
+        const files = values[`doc_${doc.id}`] as UploadFile[] | undefined;
+        const file = files?.[0]?.originFileObj as File | Blob | undefined;
+        if (file) {
+          formData.append(`doc_${doc.id}`, file);
         }
       });
 
@@ -108,7 +116,20 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
               key={doc.id}
               label={`${doc.nombre} ${doc.obligatorio ? '(Obligatorio)' : '(Opcional)'}`}
               name={`doc_${doc.id}`}
-              rules={doc.obligatorio ? [{ required: true, message: 'Este documento es obligatorio' }] : []}
+              valuePropName="fileList"
+              getValueFromEvent={normalizeUpload}
+              rules={
+                doc.obligatorio
+                  ? [
+                      {
+                        validator: (_, value: UploadFile[]) =>
+                          value && value.length > 0
+                            ? Promise.resolve()
+                            : Promise.reject(new Error('Este documento es obligatorio'))
+                      }
+                    ]
+                  : []
+              }
             >
               <Upload beforeUpload={() => false} maxCount={1}>
                 <Button icon={<UploadOutlined />}>Seleccionar archivo</Button>

@@ -83,7 +83,12 @@ export async function POST(req: Request) {
     const docs = vacante.documentosRequeridos;
     for (const doc of docs) {
       const fieldName = `doc_${doc.id}`;
-      const archivo = form.get(fieldName) as File | null;
+      const entry = form.get(fieldName);
+      const archivo =
+        entry && typeof Blob !== 'undefined' && entry instanceof Blob
+          ? entry
+          : null;
+
       if (doc.obligatorio && !archivo) {
         return NextResponse.json(
           { error: `Falta documento obligatorio: ${doc.nombre}` },

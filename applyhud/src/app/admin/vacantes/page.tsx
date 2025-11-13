@@ -4,6 +4,7 @@ import { Table, Tag } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import Link from 'next/link';
+import VacanteForm from '@/components/admin/VacanteForm';
 
 interface Vacante {
   id: number;
@@ -90,11 +91,13 @@ export default function AdminVacantesPage() {
   return (
     <main style={{ padding: 24 }}>
       <h1>Vacantes (Recursos Humanos)</h1>
+      <VacanteForm />
       <Table
         rowKey="id"
         loading={isLoading}
         dataSource={data || []}
         columns={columns}
+        style={{ marginTop: 32 }}
       />
     </main>
   );

@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import PDFDocument from 'pdfkit';
-import AdmZip from 'adm-zip';
-import fs from 'fs';
 
 interface Params {
   params: { id: string };

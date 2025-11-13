@@ -292,3 +292,7 @@ npm run prisma:studio
 Eso te abre en el navegador algo como:
 
 http://localhost:5555
+
+# 9 Ver como correra en produccion
+
+npm run build && npm run start
