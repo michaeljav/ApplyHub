@@ -75,6 +75,7 @@ model PostulacionArchivo {
   tipoDocumento  DocumentoTipo  @default(OTRO)
   caraCedula     CaraCedula?
   tituloNivel    String?
+  graduado       String?
   institucion    String?
   cargo          String?
   fechaInicio    DateTime?
