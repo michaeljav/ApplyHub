@@ -45,7 +45,7 @@ export default function PostulacionDetallePage() {
     queryKey: ['postulacion', id],
     queryFn: async () => {
       const res = await fetch(`/api/postulaciones/${id}`);
-      if (!res.ok) throw new Error('Error cargando postulaciA3n');
+      if (!res.ok) throw new Error('Error cargando postulación');
       return res.json();
     }
   });
@@ -114,28 +114,41 @@ export default function PostulacionDetallePage() {
         <main style={{ padding: 24 }}>
           <h1>Detalle del postulante</h1>
           <Descriptions bordered column={1} style={{ marginBottom: 24 }}>
-            <Descriptions.Item label="Vacante">{data.vacante.titulo}</Descriptions.Item>
+            <Descriptions.Item label="Código postulante">
+              {data.id}
+            </Descriptions.Item>
+            <Descriptions.Item label="Vacante">
+              {data.vacante.titulo}
+            </Descriptions.Item>
             <Descriptions.Item label="Nombre completo">
               {data.nombres} {data.apellidos}
             </Descriptions.Item>
             <Descriptions.Item label="CAcdula">{data.cedula}</Descriptions.Item>
             <Descriptions.Item label="Correo">{data.email}</Descriptions.Item>
-            <Descriptions.Item label="TelAcfono">{data.telefono}</Descriptions.Item>
-            <Descriptions.Item label="Fecha postulaciA3n">{new Date(data.fecha).toLocaleString()}</Descriptions.Item>
+            <Descriptions.Item label="TelAcfono">
+              {data.telefono}
+            </Descriptions.Item>
+            <Descriptions.Item label="Fecha postulación">
+              {new Date(data.fecha).toLocaleString()}
+            </Descriptions.Item>
             <Descriptions.Item label="Es dominicano">
-              {data.esDominicano ? 'SA-' : 'No'}
+              {data.esDominicano ? 'SI' : 'No'}
             </Descriptions.Item>
             <Descriptions.Item label="No jubilado/pensionado">
-              {data.noJubilado ? 'SA-' : 'No'}
+              {data.noJubilado ? 'SI' : 'No'}
             </Descriptions.Item>
             <Descriptions.Item label="AceptA3 tAcrminos">
-              {data.aceptoTerminos ? 'SA-' : 'No'}
+              {data.aceptoTerminos ? 'SI' : 'No'}
             </Descriptions.Item>
-            <Descriptions.Item label="Requisitos mA-nimos">
-              <pre style={{ whiteSpace: 'pre-wrap' }}>{data.vacante.requisitos}</pre>
+            <Descriptions.Item label="Requisitos mínimos">
+              <pre style={{ whiteSpace: 'pre-wrap' }}>
+                {data.vacante.requisitos}
+              </pre>
             </Descriptions.Item>
             <Descriptions.Item label="Beneficios">
-              <pre style={{ whiteSpace: 'pre-wrap' }}>{data.vacante.beneficios}</pre>
+              <pre style={{ whiteSpace: 'pre-wrap' }}>
+                {data.vacante.beneficios}
+              </pre>
             </Descriptions.Item>
             <Descriptions.Item label="Estado interno">
               <Select

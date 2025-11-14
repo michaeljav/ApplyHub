@@ -28,7 +28,8 @@ export async function GET(_: Request, { params }: Params) {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="postulacion-${id}.pdf"`
+      'Content-Disposition': `attachment; filename="postulacion-${id}.pdf"`,
+      'Content-Encoding': 'identity'
     }
   });
 }

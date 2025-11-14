@@ -186,22 +186,22 @@ export default function VacanteForm({
 
   const fillFormWithVacante = useCallback(
     (source: VacanteDetalle) => {
-      const docs =
-    (source.documentosRequeridos
-      ? [...source.documentosRequeridos].sort((a, b) => a.orden - b.orden)
-      : []
-    ).map((doc, index) =>
-      normalizeDocForForm(
-            {
-              nombre: doc.nombre,
-              descripcion: doc.descripcion ?? undefined,
-              obligatorio: doc.obligatorio,
-              orden: doc.orden,
-              tipoDocumento: doc.tipoDocumento
-            },
-            index
-          )
-        );
+      const docs = (
+        source.documentosRequeridos
+          ? [...source.documentosRequeridos].sort((a, b) => a.orden - b.orden)
+          : []
+      ).map((doc, index) =>
+        normalizeDocForForm(
+          {
+            nombre: doc.nombre,
+            descripcion: doc.descripcion ?? undefined,
+            obligatorio: doc.obligatorio,
+            orden: doc.orden,
+            tipoDocumento: doc.tipoDocumento
+          },
+          index
+        )
+      );
 
       form.setFieldsValue({
         codigo: source.id,
@@ -523,6 +523,22 @@ export default function VacanteForm({
 
           <Form.Item style={{ marginTop: 24 }}>
             <Space wrap>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={saveMutation.isPending}
+              >
+                {submitLabel}
+              </Button>
+              {onCancel && (
+                <Button
+                  htmlType="button"
+                  onClick={onCancel}
+                  disabled={saveMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+              )}
               {Boolean(vacante) && !duplicateMode && (
                 <Button
                   htmlType="button"
@@ -541,22 +557,6 @@ export default function VacanteForm({
                   Cancelar duplicado
                 </Button>
               )}
-              {onCancel && (
-                <Button
-                  htmlType="button"
-                  onClick={onCancel}
-                  disabled={saveMutation.isPending}
-                >
-                  Cancelar
-                </Button>
-              )}
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={saveMutation.isPending}
-              >
-                {submitLabel}
-              </Button>
             </Space>
           </Form.Item>
         </Form>

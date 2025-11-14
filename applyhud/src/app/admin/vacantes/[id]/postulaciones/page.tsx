@@ -35,6 +35,12 @@ export default function PostulantesPorVacantePage() {
 
   const columns = [
     {
+      title: 'Código',
+      dataIndex: 'id',
+      key: 'codigo',
+      width: 90
+    },
+    {
       title: 'Nombre completo',
       key: 'nombre',
       render: (_: any, r: Postulacion) => `${r.nombres} ${r.apellidos}`

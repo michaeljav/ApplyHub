@@ -32,6 +32,12 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
       rowKey="id"
       columns={[
         {
+          title: 'Código',
+          dataIndex: 'id',
+          key: 'codigo',
+          width: 90
+        },
+        {
           title: 'Vacante',
           dataIndex: 'titulo',
           key: 'titulo',

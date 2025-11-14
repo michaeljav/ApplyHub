@@ -68,6 +68,7 @@ export default async function VacantePage({
   return (
     <main style={{ padding: 24 }}>
       <h1>{vacante.titulo}</h1>
+      <p style={{ color: '#666', marginTop: -8 }}>Código: {vacante.id}</p>
       <p>
         Publicacion: {inicio.format('DD/MM/YYYY')} - {fin.format('DD/MM/YYYY')}
       </p>

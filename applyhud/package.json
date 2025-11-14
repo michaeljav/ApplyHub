@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev ",
+    "dev:turbo": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -15,7 +16,7 @@
     "@prisma/client": "^5.19.0",
     "@tanstack/react-query": "^5.51.0",
     "@tanstack/react-query-devtools": "^5.51.0",
-    "adm-zip": "^0.5.12",
+    "jszip": "^3.10.1",
     "antd": "^5.20.0",
     "bcryptjs": "^2.4.3",
     "next": "14.2.4",

@@ -1,9 +1,13 @@
 'use client';
 
 import { Layout } from 'antd';
+import dynamic from 'next/dynamic';
 import { ReactNode } from 'react';
 import Providers from '@/app/Providers';
-import AppHeader from '@/components/AppHeader';
+
+const AppHeader = dynamic(() => import('@/components/AppHeader'), {
+  ssr: false
+});
 
 const { Content } = Layout;
 
