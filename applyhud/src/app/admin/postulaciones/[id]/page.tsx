@@ -6,10 +6,20 @@ import { Descriptions, Select, Button, List, message } from 'antd';
 import { useState } from 'react';
 import RequireAuth from '@/components/auth/RequireAuth';
 
+type DocumentoTipo = 'CEDULA' | 'CURRICULUM' | 'TITULO' | 'CERTIFICADO_LABORAL' | 'OTRO';
+
 interface PostulacionArchivo {
   id: number;
   nombreLogico: string;
   nombreFinal: string;
+  tipoDocumento: DocumentoTipo;
+  caraCedula?: 'FRONTAL' | 'REVERSO' | null;
+  tituloNivel?: string | null;
+  graduado?: string | null;
+  institucion?: string | null;
+  cargo?: string | null;
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
 }
 
 interface Vacante {
@@ -106,6 +116,50 @@ export default function PostulacionDetallePage() {
       setDownloadingZip
     );
 
+  const TIPO_LABELS: Record<DocumentoTipo, string> = {
+    CEDULA: 'Cédula',
+    CURRICULUM: 'Currículum',
+    TITULO: 'Título',
+    CERTIFICADO_LABORAL: 'Certificación laboral',
+    OTRO: 'Otro'
+  };
+
+  const formatFecha = (value?: string | null) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toLocaleDateString();
+  };
+
+  const renderDocumentoDetalles = (archivo: PostulacionArchivo) => {
+    const detalles: string[] = [];
+
+    if (archivo.tipoDocumento === 'CEDULA' && archivo.caraCedula) {
+      detalles.push(
+        `Cara: ${archivo.caraCedula === 'FRONTAL' ? 'Frontal' : 'Reverso'}`
+      );
+    }
+
+    if (archivo.tipoDocumento === 'TITULO') {
+      if (archivo.tituloNivel) detalles.push(`Grado: ${archivo.tituloNivel}`);
+      if (archivo.graduado) detalles.push(`Estado: ${archivo.graduado}`);
+    }
+
+    if (archivo.tipoDocumento === 'CERTIFICADO_LABORAL') {
+      if (archivo.institucion) detalles.push(`Institución: ${archivo.institucion}`);
+      if (archivo.cargo) detalles.push(`Cargo: ${archivo.cargo}`);
+      const periodoInicio = formatFecha(archivo.fechaInicio);
+      const periodoFin = formatFecha(archivo.fechaFin);
+      if (periodoInicio || periodoFin) {
+        detalles.push(
+          `Periodo: ${periodoInicio || 'N/D'} - ${periodoFin || 'Actual'}`
+        );
+      }
+    }
+
+    return detalles;
+  };
+
   return (
     <RequireAuth roles={['ADMIN', 'RRHH']}>
       {isLoading || !data ? (
@@ -176,8 +230,17 @@ export default function PostulacionDetallePage() {
                 ]}
               >
                 <List.Item.Meta
-                  title={item.nombreLogico}
-                  description={item.nombreFinal}
+                  title={`${item.nombreLogico} (${TIPO_LABELS[item.tipoDocumento] || item.tipoDocumento})`}
+                  description={
+                    <div>
+                      <div>
+                        <strong>Archivo:</strong> {item.nombreFinal}
+                      </div>
+                      {renderDocumentoDetalles(item).map((detalle) => (
+                        <div key={detalle}>{detalle}</div>
+                      ))}
+                    </div>
+                  }
                 />
               </List.Item>
             )}

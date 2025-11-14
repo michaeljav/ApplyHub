@@ -1,8 +1,23 @@
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 
+export type DocumentoTipo =
+  | 'CEDULA'
+  | 'CURRICULUM'
+  | 'TITULO'
+  | 'CERTIFICADO_LABORAL'
+  | 'OTRO';
+
 export type ArchivoResumen = {
   nombreLogico: string;
   nombreFinal: string;
+  tipoDocumento: DocumentoTipo;
+  caraCedula?: 'FRONTAL' | 'REVERSO' | null;
+  tituloNivel?: string | null;
+  graduado?: string | null;
+  institucion?: string | null;
+  cargo?: string | null;
+  fechaInicio?: Date | string | null;
+  fechaFin?: Date | string | null;
 };
 
 export type PostulacionResumen = {
@@ -124,8 +139,42 @@ export async function generarPdfPostulacion(
   escribir(`Aceptó términos: ${postulacion.aceptoTerminos ? 'Sí' : 'No'}`);
   cursorY -= altoLinea * 0.5;
   escribir('Documentos:');
+  const formatFecha = (valor?: Date | string | null) => {
+    if (!valor) return null;
+    const fecha =
+      valor instanceof Date ? valor : new Date(typeof valor === 'string' ? valor : '');
+    if (Number.isNaN(fecha.getTime())) return null;
+    return fecha.toISOString().split('T')[0];
+  };
+
   postulacion.archivos.forEach((archivo) => {
     escribir(`- ${archivo.nombreLogico}: ${archivo.nombreFinal}`);
+    switch (archivo.tipoDocumento) {
+      case 'CEDULA':
+        if (archivo.caraCedula) {
+          escribir(
+            `   Cara: ${archivo.caraCedula === 'FRONTAL' ? 'Frontal' : 'Reverso'}`
+          );
+        }
+        break;
+      case 'TITULO':
+        if (archivo.tituloNivel) escribir(`   Grado: ${archivo.tituloNivel}`);
+        if (archivo.graduado) escribir(`   Estado: ${archivo.graduado}`);
+        break;
+      case 'CERTIFICADO_LABORAL': {
+        if (archivo.institucion) escribir(`   Institución: ${archivo.institucion}`);
+        if (archivo.cargo) escribir(`   Cargo: ${archivo.cargo}`);
+        const inicio = formatFecha(archivo.fechaInicio);
+        const fin = formatFecha(archivo.fechaFin);
+        if (inicio || fin) {
+          escribir(`   Periodo: ${inicio || 'N/D'} - ${fin || 'Actual'}`);
+        }
+        break;
+      }
+      default:
+        if (archivo.cargo) escribir(`   Detalle: ${archivo.cargo}`);
+        break;
+    }
   });
 
   const pdfBytes = await pdfDoc.save();
