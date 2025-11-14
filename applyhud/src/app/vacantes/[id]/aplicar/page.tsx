@@ -6,6 +6,28 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { UploadFile } from 'antd/es/upload/interface';
 
+type DocumentoTipo =
+  | 'CEDULA'
+  | 'CURRICULUM'
+  | 'TITULO'
+  | 'CERTIFICADO_LABORAL'
+  | 'OTRO';
+
+type CaraCedula = 'FRONTAL' | 'REVERSO';
+
+interface DocumentoMeta {
+  texto?: string;
+  tipoDocumento?: DocumentoTipo;
+  caraCedula?: CaraCedula | null;
+  tituloNivel?: string | null;
+  certificadoLaboral?: {
+    institucion?: string;
+    cargo?: string;
+    fechaInicio?: string | null;
+    fechaFin?: string | null;
+  } | null;
+}
+
 interface VacanteDocumento {
   id: number;
   nombre: string;
@@ -25,6 +47,19 @@ const normalizeUpload = (e: any) => {
     return e;
   }
   return e?.fileList ?? [];
+};
+
+const parseDocumentoMeta = (descripcion: string | null): DocumentoMeta => {
+  if (!descripcion) return {};
+  try {
+    const parsed = JSON.parse(descripcion);
+    if (parsed && typeof parsed === 'object') {
+      return parsed as DocumentoMeta;
+    }
+    return {};
+  } catch {
+    return {};
+  }
 };
 
 export default function AplicarPage({ params }: { params: { id: string } }) {
@@ -55,8 +90,8 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
       formData.append('aceptoTerminos', values.aceptoTerminos ? 'true' : 'false');
 
       (vacante?.documentosRequeridos || []).forEach((doc) => {
-        const files = values[`doc_${doc.id}`] as UploadFile[] | undefined;
-        const file = files?.[0]?.originFileObj as File | Blob | undefined;
+        const field = values[`doc_${doc.id}`] as UploadFile[] | undefined;
+        const file = field?.[0]?.originFileObj as File | Blob | undefined;
         if (file) {
           formData.append(`doc_${doc.id}`, file);
         }
@@ -69,10 +104,10 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || 'Error al enviar la postulación');
+        throw new Error(data?.error || 'Error al enviar la postulacion');
       }
 
-      message.success('Postulación enviada correctamente');
+      message.success('Postulacion enviada correctamente');
       router.push('/vacantes');
     } catch (e: any) {
       message.error(e.message);
@@ -81,7 +116,78 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
     }
   };
 
-  if (loading || !vacante) return <main style={{ padding: 24 }}>Cargando...</main>;
+  if (loading || !vacante) {
+    return <main style={{ padding: 24 }}>Cargando...</main>;
+  }
+
+  const renderDocumentoCampos = (doc: VacanteDocumento) => {
+    const meta = parseDocumentoMeta(doc.descripcion);
+    const baseName = `doc_${doc.id}`;
+    const requerido = doc.obligatorio;
+    const detalles: string[] = [];
+
+    if (meta.caraCedula) {
+      detalles.push(
+        `Cara: ${meta.caraCedula === 'FRONTAL' ? 'Frontal' : 'Reverso'}`
+      );
+    }
+    if (meta.tituloNivel) detalles.push(`Nivel: ${meta.tituloNivel}`);
+    if (meta.certificadoLaboral) {
+      const cert = meta.certificadoLaboral;
+      if (cert?.institucion) detalles.push(`Institución: ${cert.institucion}`);
+      if (cert?.cargo) detalles.push(`Cargo: ${cert.cargo}`);
+      if (cert?.fechaInicio || cert?.fechaFin) {
+        detalles.push(
+          `Periodo: ${cert?.fechaInicio || 'N/D'} - ${
+            cert?.fechaFin || 'Actual'
+          }`
+        );
+      }
+    }
+
+    return (
+      <Form.Item
+        key={doc.id}
+        label={
+          <>
+            <strong>
+              {doc.nombre} {requerido ? '(Obligatorio)' : '(Opcional)'}
+            </strong>
+            {(meta.texto || detalles.length > 0) && (
+              <p style={{ margin: '4px 0 0' }}>
+                {meta.texto}
+                {detalles.length > 0 && (
+                  <>
+                    {meta.texto ? ' - ' : ''}
+                    {detalles.join(' | ')}
+                  </>
+                )}
+              </p>
+            )}
+          </>
+        }
+        name={baseName}
+        valuePropName="fileList"
+        getValueFromEvent={normalizeUpload}
+        rules={
+          requerido
+            ? [
+                {
+                  validator: (_rule, value: UploadFile[]) =>
+                    value && value.length > 0
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('Este documento es obligatorio'))
+                }
+              ]
+            : []
+        }
+      >
+        <Upload beforeUpload={() => false} maxCount={1} accept=".pdf">
+          <Button icon={<UploadOutlined />}>Seleccionar PDF</Button>
+        </Upload>
+      </Form.Item>
+    );
+  };
 
   return (
     <main style={{ padding: 24, maxWidth: 700 }}>
@@ -93,61 +199,67 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
         <Form.Item label="Apellidos" name="apellidos" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item label="Cédula" name="cedula" rules={[{ required: true }]}>
+        <Form.Item label="Cedula" name="cedula" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item label="Correo electrónico" name="email" rules={[{ required: true, type: 'email' }]}>
+        <Form.Item
+          label="Correo electronico"
+          name="email"
+          rules={[{ required: true, type: 'email' }]}
+        >
           <Input />
         </Form.Item>
-        <Form.Item label="Teléfono" name="telefono" rules={[{ required: true }]}>
+        <Form.Item label="Telefono" name="telefono" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item name="esDominicano" valuePropName="checked" rules={[{ validator:(_, v)=> v ? Promise.resolve() : Promise.reject('Debe confirmar que es dominicano') }]}>
+        <Form.Item
+          name="esDominicano"
+          valuePropName="checked"
+          rules={[
+            {
+              validator: (_rule, value) =>
+                value ? Promise.resolve() : Promise.reject(new Error('Debes confirmar que eres dominicano'))
+            }
+          ]}
+        >
           <Checkbox>Soy dominicano</Checkbox>
         </Form.Item>
-        <Form.Item name="noJubilado" valuePropName="checked" rules={[{ validator:(_, v)=> v ? Promise.resolve() : Promise.reject('Debe confirmar que no es jubilado/pensionado') }]}>
+        <Form.Item
+          name="noJubilado"
+          valuePropName="checked"
+          rules={[
+            {
+              validator: (_rule, value) =>
+                value ? Promise.resolve() : Promise.reject(new Error('Debes confirmar que no eres jubilado/pensionado'))
+            }
+          ]}
+        >
           <Checkbox>No soy jubilado ni pensionado del Estado</Checkbox>
         </Form.Item>
-        <Form.Item name="aceptoTerminos" valuePropName="checked" rules={[{ validator:(_, v)=> v ? Promise.resolve() : Promise.reject('Debe aceptar los términos') }]}>
-          <Checkbox>Acepto los términos y condiciones del proceso</Checkbox>
+        <Form.Item
+          name="aceptoTerminos"
+          valuePropName="checked"
+          rules={[
+            {
+              validator: (_rule, value) =>
+                value ? Promise.resolve() : Promise.reject(new Error('Debes aceptar los terminos'))
+            }
+          ]}
+        >
+          <Checkbox>Acepto los terminos y condiciones del proceso</Checkbox>
         </Form.Item>
 
         <h3>Documentos</h3>
         {vacante.documentosRequeridos
           .sort((a, b) => a.orden - b.orden)
-          .map((doc) => (
-            <Form.Item
-              key={doc.id}
-              label={`${doc.nombre} ${doc.obligatorio ? '(Obligatorio)' : '(Opcional)'}`}
-              name={`doc_${doc.id}`}
-              valuePropName="fileList"
-              getValueFromEvent={normalizeUpload}
-              rules={
-                doc.obligatorio
-                  ? [
-                      {
-                        validator: (_, value: UploadFile[]) =>
-                          value && value.length > 0
-                            ? Promise.resolve()
-                            : Promise.reject(new Error('Este documento es obligatorio'))
-                      }
-                    ]
-                  : []
-              }
-            >
-              <Upload beforeUpload={() => false} maxCount={1}>
-                <Button icon={<UploadOutlined />}>Seleccionar archivo</Button>
-              </Upload>
-            </Form.Item>
-          ))}
+          .map((doc) => renderDocumentoCampos(doc))}
 
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={submitting} disabled={submitting}>
-            Enviar postulación
+            Enviar postulacion
           </Button>
         </Form.Item>
       </Form>
     </main>
   );
 }
-

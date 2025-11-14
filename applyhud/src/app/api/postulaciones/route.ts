@@ -1,8 +1,34 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import dayjs from 'dayjs';
 import { permitirMultiplesVacantes } from '@/lib/config';
 import { guardarArchivoLocal } from '@/lib/upload';
+
+type DocumentoMeta = {
+  texto?: string;
+  tipoDocumento?: string;
+  caraCedula?: 'FRONTAL' | 'REVERSO' | null;
+  tituloNivel?: string | null;
+  certificadoLaboral?: {
+    institucion?: string;
+    cargo?: string;
+    fechaInicio?: string | null;
+    fechaFin?: string | null;
+  } | null;
+};
+
+const parseDocumentoMeta = (valor: string | null): DocumentoMeta => {
+  if (!valor) return {};
+  try {
+    const parsed = JSON.parse(valor);
+    if (parsed && typeof parsed === 'object') {
+      return parsed as DocumentoMeta;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+};
 
 export async function POST(req: Request) {
   try {
@@ -34,14 +60,14 @@ export async function POST(req: Request) {
     const inicio = dayjs(vacante.fechaInicio);
     const fin = dayjs(vacante.fechaFin);
     if (inicio.isAfter(hoy, 'day') || fin.isBefore(hoy, 'day')) {
-      return NextResponse.json({ error: 'La vacante no está disponible' }, { status: 400 });
+      return NextResponse.json({ error: 'La vacante no estÃ¡ disponible' }, { status: 400 });
     }
 
     if (
       vacante.limitePostulantes != null &&
       vacante._count.postulaciones >= vacante.limitePostulantes
     ) {
-      return NextResponse.json({ error: 'Se alcanzó el límite de postulantes' }, { status: 400 });
+      return NextResponse.json({ error: 'Se alcanzÃ³ el lÃ­mite de postulantes' }, { status: 400 });
     }
 
     if (!permitirMultiplesVacantes()) {
@@ -50,7 +76,7 @@ export async function POST(req: Request) {
       });
       if (yaPostulo) {
         return NextResponse.json(
-          { error: 'Ya existe una postulación con esta cédula. Solo se permite una vacante.' },
+          { error: 'Ya existe una postulaciÃ³n con esta cÃ©dula. Solo se permite una vacante.' },
           { status: 400 }
         );
       }
@@ -61,7 +87,7 @@ export async function POST(req: Request) {
     });
     if (existenteMismaVacante) {
       return NextResponse.json(
-        { error: 'Ya existe una postulación para esta vacante con esta cédula.' },
+        { error: 'Ya existe una postulaciÃ³n para esta vacante con esta cÃ©dula.' },
         { status: 400 }
       );
     }
@@ -82,8 +108,8 @@ export async function POST(req: Request) {
 
     const docs = vacante.documentosRequeridos;
     for (const doc of docs) {
-      const fieldName = `doc_${doc.id}`;
-      const entry = form.get(fieldName);
+      const baseName = `doc_${doc.id}`;
+      const entry = form.get(baseName);
       const archivo =
         entry && typeof Blob !== 'undefined' && entry instanceof Blob
           ? entry
@@ -95,27 +121,31 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      if (archivo) {
-        const { nombreFinal, ruta } = await guardarArchivoLocal(
-          archivo,
-          doc.nombre.replace(/\s+/g, '-').toLowerCase(),
-          vacanteId,
-          postulacion.id
-        );
-        await prisma.postulacionArchivo.create({
-          data: {
-            postulacionId: postulacion.id,
-            nombreLogico: doc.nombre,
-            nombreFinal,
-            ruta
-          }
-        });
-      }
+
+      if (!archivo) continue;
+
+      const { nombreFinal, ruta } = await guardarArchivoLocal(
+        archivo,
+        doc.nombre.replace(/\s+/g, '-').toLowerCase(),
+        vacanteId,
+        postulacion.id
+      );
+
+      await prisma.postulacionArchivo.create({
+        data: {
+          postulacionId: postulacion.id,
+          nombreLogico: doc.nombre,
+          nombreFinal,
+          ruta
+        }
+      });
     }
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error(e);
-    return NextResponse.json({ error: 'Error procesando la postulación' }, { status: 500 });
+    return NextResponse.json({ error: 'Error procesando la postulaciÃ³n' }, { status: 500 });
   }
 }
+
+
