@@ -285,7 +285,16 @@ export default function VacanteForm({
   };
 
   const renderNombreField = (fieldIndex: number) => (
-    <Form.Item noStyle shouldUpdate>
+    <Form.Item
+      noStyle
+      shouldUpdate={(prevValues, currentValues) => {
+        const prevTipo =
+          prevValues?.documentos?.[fieldIndex]?.tipoDocumento ?? 'OTRO';
+        const nextTipo =
+          currentValues?.documentos?.[fieldIndex]?.tipoDocumento ?? 'OTRO';
+        return prevTipo !== nextTipo;
+      }}
+    >
       {() => {
         const docValues = (form.getFieldValue(['documentos', fieldIndex]) ||
           {}) as DocumentoFormValue;
@@ -294,7 +303,7 @@ export default function VacanteForm({
           return (
             <Form.Item
               label="Nombre del documento"
-              name={['documentos', fieldIndex, 'nombre']}
+              name={[fieldIndex, 'nombre']}
               rules={[
                 { required: true, message: 'Ingresa el nombre del documento' }
               ]}
