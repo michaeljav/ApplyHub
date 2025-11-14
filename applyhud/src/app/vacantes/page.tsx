@@ -20,6 +20,24 @@ export default async function VacantesPage() {
   return (
     <main style={{ padding: 24 }}>
       <div
+        role="alert"
+        style={{
+          backgroundColor: '#fff8e1',
+          border: '1px solid #ffe58f',
+          color: '#7a5300',
+          textAlign: 'center',
+          padding: '12px 16px',
+          borderRadius: 8,
+          fontWeight: 600,
+          marginBottom: 24,
+          maxWidth: 720,
+          marginLeft: 'auto',
+          marginRight: 'auto'
+        }}
+      >
+        Importante: solo puedes aplicar a una vacante.
+      </div>
+      <div
         style={{
           display: 'flex',
           alignItems: 'center',

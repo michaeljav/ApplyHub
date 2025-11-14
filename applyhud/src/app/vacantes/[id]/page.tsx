@@ -1,7 +1,7 @@
 import { Vacante, VacanteDocumento } from '@prisma/client';
 import dayjs from 'dayjs';
-import Link from 'next/link';
 import { getBaseUrl } from '@/lib/baseUrl';
+import ApplyWarningLink from '@/components/vacantes/ApplyWarningLink';
 
 type DocumentoMeta = {
   texto?: string;
@@ -67,6 +67,24 @@ export default async function VacantePage({
 
   return (
     <main style={{ padding: 24 }}>
+      <div
+        role="alert"
+        style={{
+          backgroundColor: '#fff8e1',
+          border: '1px solid #ffe58f',
+          color: '#7a5300',
+          textAlign: 'center',
+          padding: '12px 16px',
+          borderRadius: 8,
+          fontWeight: 600,
+          marginBottom: 24,
+          maxWidth: 720,
+          marginLeft: 'auto',
+          marginRight: 'auto'
+        }}
+      >
+        Importante: solo puedes aplicar a una vacante.
+      </div>
       <h1>{vacante.titulo}</h1>
       <p style={{ color: '#666', marginTop: -8 }}>Código: {vacante.id}</p>
       <p>
@@ -109,7 +127,9 @@ export default async function VacantePage({
             if (descripcion.meta?.caraCedula) {
               extras.push(
                 `Cara: ${
-                  descripcion.meta.caraCedula === 'FRONTAL' ? 'Frontal' : 'Reverso'
+                  descripcion.meta.caraCedula === 'FRONTAL'
+                    ? 'Frontal'
+                    : 'Reverso'
                 }`
               );
             }
@@ -122,7 +142,8 @@ export default async function VacantePage({
             if (descripcion.meta?.certificadoLaboral) {
               const cert = descripcion.meta.certificadoLaboral;
               const detalles: string[] = [];
-              if (cert?.institucion) detalles.push(`Institución: ${cert.institucion}`);
+              if (cert?.institucion)
+                detalles.push(`Institución: ${cert.institucion}`);
               if (cert?.cargo) detalles.push(`Cargo: ${cert.cargo}`);
               if (cert?.fechaInicio || cert?.fechaFin) {
                 detalles.push(
@@ -149,9 +170,7 @@ export default async function VacantePage({
       </ul>
 
       {puedeAplicar ? (
-        <Link href={`/vacantes/${vacante.id}/aplicar`}>
-          Aplicar a esta vacante
-        </Link>
+        <ApplyWarningLink vacanteId={vacante.id} />
       ) : (
         <p style={{ color: 'red', marginTop: 16 }}>
           Esta vacante no esta disponible para nuevas postulaciones.

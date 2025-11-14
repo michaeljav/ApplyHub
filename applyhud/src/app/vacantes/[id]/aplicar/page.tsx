@@ -8,7 +8,8 @@ import {
   Upload,
   message,
   Select,
-  DatePicker
+  DatePicker,
+  Modal
 } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
@@ -96,6 +97,8 @@ const GRID_STYLES = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))'
 } as const;
 
+const SINGLE_APPLICATION_WARNING = 'Solo puedes aplicar a una vacante.';
+
 export default function AplicarPage({ params }: { params: { id: string } }) {
   const [form] = Form.useForm();
   const [vacante, setVacante] = useState<VacanteDetalle | null>(null);
@@ -110,7 +113,7 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
       .finally(() => setLoading(false));
   }, [params.id]);
 
-  const onFinish = async (values: any) => {
+  const submitApplication = async (values: any) => {
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -233,6 +236,17 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleFinish = (values: any) => {
+    Modal.confirm({
+      title: 'Aviso importante',
+      content: SINGLE_APPLICATION_WARNING,
+      okText: 'Enviar postulacion',
+      cancelText: 'Cancelar',
+      centered: true,
+      onOk: () => submitApplication(values)
+    });
   };
 
   if (loading || !vacante) {
@@ -583,6 +597,21 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
   };
   return (
     <main style={{ padding: 24, maxWidth: 700 }}>
+      <div
+        role="alert"
+        style={{
+          backgroundColor: '#fff8e1',
+          border: '1px solid #ffe58f',
+          color: '#7a5300',
+          textAlign: 'center',
+          padding: '12px 16px',
+          borderRadius: 8,
+          fontWeight: 600,
+          marginBottom: 24
+        }}
+      >
+        {SINGLE_APPLICATION_WARNING}
+      </div>
       <h1>Aplicar a: {vacante.titulo}</h1>
       {vacante.pdfInformativoNombre && (
         <p style={{ marginBottom: 16 }}>
@@ -596,7 +625,7 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
           </a>
         </p>
       )}
-      <Form form={form} layout="vertical" onFinish={onFinish}>
+      <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Form.Item label="Nombres" name="nombres" rules={[{ required: true }]}>
           <Input />
         </Form.Item>

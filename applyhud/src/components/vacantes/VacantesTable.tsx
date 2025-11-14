@@ -1,8 +1,11 @@
 'use client';
 
-import { Table, Tag } from 'antd';
+import { Modal, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
+import type { MouseEvent } from 'react';
 import type { Vacante } from '@prisma/client';
 
 export type VacanteWithCount = Vacante & {
@@ -45,6 +48,24 @@ interface VacantesTableProps {
 }
 
 export default function VacantesTable({ data = [] }: VacantesTableProps) {
+  const router = useRouter();
+
+  const handleVacanteClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, vacanteId: string | number) => {
+      event.preventDefault();
+      const targetUrl = `/vacantes/${vacanteId}`;
+      Modal.confirm({
+        title: 'Aviso importante',
+        content: 'Solo puedes aplicar a una vacante.',
+        okText: 'Continuar',
+        cancelText: 'Cancelar',
+        centered: true,
+        onOk: () => router.push(targetUrl)
+      });
+    },
+    [router]
+  );
+
   const columns = [
     {
       title: 'Código',
@@ -58,7 +79,12 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
       dataIndex: 'titulo',
       key: 'titulo',
       render: (text: string, record: VacanteWithCount) => (
-        <Link href={`/vacantes/${record.id}`}>{text}</Link>
+        <Link
+          href={`/vacantes/${record.id}`}
+          onClick={(event) => handleVacanteClick(event, record.id)}
+        >
+          {text}
+        </Link>
       )
     },
     {
@@ -87,8 +113,7 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
     {
       title: 'Postulantes',
       key: 'postulantes',
-      render: (_: any, record: VacanteWithCount) =>
-        record._count.postulaciones,
+      render: (_: any, record: VacanteWithCount) => record._count.postulaciones,
       responsive: ['md']
     },
     {
