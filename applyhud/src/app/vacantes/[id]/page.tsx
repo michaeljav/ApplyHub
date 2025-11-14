@@ -63,7 +63,7 @@ export default async function VacantePage({
     vacante.limitePostulantes != null &&
     vacante._count.postulaciones >= vacante.limitePostulantes;
 
-  const puedeAplicar = dentroDeFechas && !limiteAlcanzado;
+  const puedeAplicar = vacante.activa && dentroDeFechas && !limiteAlcanzado;
 
   return (
     <main style={{ padding: 24 }}>
@@ -71,6 +71,11 @@ export default async function VacantePage({
       <p>
         Publicacion: {inicio.format('DD/MM/YYYY')} - {fin.format('DD/MM/YYYY')}
       </p>
+      {!vacante.activa && (
+        <p style={{ color: 'red' }}>
+          Esta vacante se encuentra inactiva y no recibe nuevas postulaciones.
+        </p>
+      )}
       {vacante.limitePostulantes && (
         <p>
           Limite de postulantes: {vacante._count.postulaciones}/

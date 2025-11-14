@@ -28,6 +28,7 @@ model Vacante {
   fechaInicio          DateTime
   fechaFin             DateTime
   limitePostulantes    Int?
+  activa               Boolean              @default(true)
   documentosRequeridos VacanteDocumento[]
   postulaciones        Postulacion[]
   createdAt            DateTime             @default(now())

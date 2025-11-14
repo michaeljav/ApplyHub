@@ -1,37 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authConfig } from '@/lib/auth';
-
-type DocumentoTipo = (
-  | 'CEDULA'
-  | 'CURRICULUM'
-  | 'TITULO'
-  | 'CERTIFICADO_LABORAL'
-  | 'OTRO'
-);
-
-const DOCUMENTO_TIPOS = new Set<DocumentoTipo>([
-  'CEDULA',
-  'CURRICULUM',
-  'TITULO',
-  'CERTIFICADO_LABORAL',
-  'OTRO'
-]);
-
-const normalizeDocumentoTipo = (tipo: unknown): DocumentoTipo =>
-  typeof tipo === 'string' && DOCUMENTO_TIPOS.has(tipo as DocumentoTipo)
-    ? (tipo as DocumentoTipo)
-    : 'OTRO';
-
-async function ensureRole(roles: Array<'ADMIN' | 'RRHH'>) {
-  const session = await getServerSession(authConfig);
-  const rol = (session?.user as { rol?: string } | undefined)?.rol;
-  if (!session || !rol || !roles.includes(rol as 'ADMIN' | 'RRHH')) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
-  return null;
-}
+import { ensureRole } from '@/lib/ensureRole';
+import { mapDocumentosPayload } from '@/lib/documentos';
 
 export async function GET() {
   const authError = await ensureRole(['ADMIN', 'RRHH']);
@@ -64,7 +34,8 @@ export async function POST(request: Request) {
     fechaInicio,
     fechaFin,
     limitePostulantes,
-    documentosRequeridos = []
+    documentosRequeridos = [],
+    activa
   } = payload || {};
 
   if (
@@ -96,18 +67,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const docs = Array.isArray(documentosRequeridos)
-    ? documentosRequeridos
-        .filter((doc) => doc?.nombre)
-        .map((doc: any, index: number) => ({
-          nombre: String(doc.nombre),
-          descripcion: doc.descripcion ? String(doc.descripcion) : null,
-          obligatorio: Boolean(doc.obligatorio),
-          orden:
-            typeof doc.orden === 'number' ? doc.orden : index + 1,
-          tipoDocumento: normalizeDocumentoTipo(doc.tipoDocumento)
-        }))
-    : [];
+  const docs = mapDocumentosPayload(documentosRequeridos);
 
   const vacante = await prisma.vacante.create({
     data: {
@@ -118,6 +78,7 @@ export async function POST(request: Request) {
       fechaFin: finDate,
       limitePostulantes:
         typeof limitePostulantes === 'number' ? limitePostulantes : null,
+      activa: typeof activa === 'boolean' ? activa : true,
       documentosRequeridos: docs.length
         ? { create: docs }
         : undefined

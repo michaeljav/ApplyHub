@@ -9,6 +9,7 @@ async function getVacantes(): Promise<VacanteWithCount[]> {
     include: {
       _count: { select: { postulaciones: true } }
     },
+    where: { activa: true },
     orderBy: { fechaInicio: 'asc' }
   });
 }

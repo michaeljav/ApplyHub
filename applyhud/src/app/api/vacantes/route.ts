@@ -6,6 +6,7 @@ export async function GET() {
     include: {
       _count: { select: { postulaciones: true } }
     },
+    where: { activa: true },
     orderBy: { fechaInicio: 'asc' }
   });
   return NextResponse.json(vacantes);

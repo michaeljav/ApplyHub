@@ -1,8 +1,16 @@
 'use client';
 
-import { Table, Tag, Button } from 'antd';
+import {
+  Table,
+  Tag,
+  Button,
+  Space,
+  Popconfirm,
+  message,
+  Spin
+} from 'antd';
 import { PlusOutlined, CloseOutlined } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import Link from 'next/link';
 import VacanteForm from '@/components/admin/VacanteForm';
@@ -15,13 +23,35 @@ interface Vacante {
   fechaInicio: string;
   fechaFin: string;
   limitePostulantes: number | null;
+  activa: boolean;
   _count: { postulaciones: number };
+}
+
+type DocumentoTipo =
+  | 'CEDULA'
+  | 'CURRICULUM'
+  | 'TITULO'
+  | 'CERTIFICADO_LABORAL'
+  | 'OTRO';
+
+interface VacanteDetalleAdmin extends Vacante {
+  requisitos: string;
+  beneficios: string;
+  documentosRequeridos: Array<{
+    id: number;
+    nombre: string;
+    descripcion: string | null;
+    obligatorio: boolean;
+    orden: number;
+    tipoDocumento: DocumentoTipo;
+  }>;
 }
 
 function calcularEstado(v: Vacante): string {
   const hoy = dayjs();
   const inicio = dayjs(v.fechaInicio);
   const fin = dayjs(v.fechaFin);
+  if (!v.activa) return 'Inactiva';
   if (inicio.isAfter(hoy, 'day')) return 'Próxima';
   if (fin.isBefore(hoy, 'day')) return 'Cerrada';
   if (v.limitePostulantes && v._count.postulaciones >= v.limitePostulantes) return 'Límite alcanzado';
@@ -29,7 +59,12 @@ function calcularEstado(v: Vacante): string {
 }
 
 export default function AdminVacantesPage() {
-  const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
+  const [editingVacante, setEditingVacante] = useState<VacanteDetalleAdmin | null>(null);
+  const [loadingVacante, setLoadingVacante] = useState(false);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const [messageApi, contextHolder] = message.useMessage();
   const { data, isLoading } = useQuery<Vacante[]>({
     queryKey: ['admin-vacantes'],
     queryFn: async () => {
@@ -38,6 +73,64 @@ export default function AdminVacantesPage() {
       return res.json();
     }
   });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, activa }: { id: number; activa: boolean }) => {
+      const res = await fetch(`/api/vacantes/admin/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activa })
+      });
+      if (!res.ok) throw new Error('Error actualizando vacante');
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      messageApi.success(
+        variables.activa ? 'Vacante activada' : 'Vacante inactivada'
+      );
+      queryClient.invalidateQueries({ queryKey: ['admin-vacantes'] });
+    },
+    onError: () => {
+      messageApi.error('No se pudo actualizar la vacante');
+    },
+    onSettled: () => setTogglingId(null)
+  });
+
+  const closeForm = () => {
+    setFormMode(null);
+    setEditingVacante(null);
+  };
+
+  const handleCreateClick = () => {
+    if (formMode === 'create') {
+      closeForm();
+      return;
+    }
+    setEditingVacante(null);
+    setFormMode('create');
+  };
+
+  const handleEditClick = async (vacanteId: number) => {
+    setFormMode('edit');
+    setLoadingVacante(true);
+    setEditingVacante(null);
+    try {
+      const res = await fetch(`/api/vacantes/admin/${vacanteId}`);
+      if (!res.ok) throw new Error('Error cargando vacante');
+      const detalle: VacanteDetalleAdmin = await res.json();
+      setEditingVacante(detalle);
+    } catch {
+      messageApi.error('No se pudo cargar la vacante seleccionada');
+      closeForm();
+    } finally {
+      setLoadingVacante(false);
+    }
+  };
+
+  const handleToggle = (vacante: Vacante) => {
+    setTogglingId(vacante.id);
+    toggleMutation.mutate({ id: vacante.id, activa: !vacante.activa });
+  };
 
   const columns = [
     {
@@ -79,6 +172,8 @@ export default function AdminVacantesPage() {
             ? 'blue'
             : estado === 'Límite alcanzado'
             ? 'orange'
+            : estado === 'Inactiva'
+            ? 'default'
             : 'red';
         return <Tag color={color}>{estado}</Tag>;
       }
@@ -87,15 +182,38 @@ export default function AdminVacantesPage() {
       title: 'Acciones',
       key: 'acciones',
       render: (_: any, record: Vacante) => (
-        <Link href={`/admin/vacantes/${record.id}/postulaciones`}>Ver postulantes</Link>
+        <Space size="small">
+          <Link href={`/admin/vacantes/${record.id}/postulaciones`}>
+            Ver postulantes
+          </Link>
+          <Button type="link" onClick={() => handleEditClick(record.id)}>
+            Editar
+          </Button>
+          <Popconfirm
+            title={record.activa ? 'Inactivar vacante' : 'Activar vacante'}
+            description={`Seguro que deseas ${
+              record.activa ? 'inactivar' : 'activar'
+            } esta vacante?`}
+            onConfirm={() => handleToggle(record)}
+          >
+            <Button
+              type="link"
+              danger={record.activa}
+              loading={togglingId === record.id && toggleMutation.isPending}
+            >
+              {record.activa ? 'Inactivar' : 'Activar'}
+            </Button>
+          </Popconfirm>
+        </Space>
       )
     }
   ];
 
-  const toggleForm = () => setShowForm((prev) => !prev);
+  const isCreateOpen = formMode === 'create';
 
   return (
     <RequireAuth roles={['ADMIN', 'RRHH']}>
+      {contextHolder}
       <main style={{ padding: 24 }}>
         <div
           style={{
@@ -105,22 +223,29 @@ export default function AdminVacantesPage() {
           gap: 16,
           flexWrap: 'wrap'
         }}
-      >
+        >
         <h1 style={{ margin: 0 }}>Vacantes (Recursos Humanos)</h1>
         <Button
           type="primary"
-          icon={showForm ? <CloseOutlined /> : <PlusOutlined />}
-          onClick={toggleForm}
+          icon={isCreateOpen ? <CloseOutlined /> : <PlusOutlined />}
+          onClick={handleCreateClick}
         >
-          {showForm ? 'Cerrar formulario' : 'Crear vacante'}
+          {isCreateOpen ? 'Cerrar formulario' : 'Crear vacante'}
         </Button>
       </div>
-      {showForm && (
-        <VacanteForm
-          onCreated={() => {
-            setShowForm(false);
-          }}
-        />
+      {formMode && (
+        <div style={{ marginTop: 24 }}>
+          {formMode === 'edit' && (!editingVacante || loadingVacante) ? (
+            <Spin tip="Cargando vacante..." />
+          ) : (
+            <VacanteForm
+              vacante={formMode === 'edit' ? editingVacante : undefined}
+              onCreated={closeForm}
+              onUpdated={closeForm}
+              onCancel={closeForm}
+            />
+          )}
+        </div>
       )}
       <Table
         rowKey="id"

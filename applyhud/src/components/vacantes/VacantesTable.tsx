@@ -13,6 +13,7 @@ function calcularEstado(v: VacanteWithCount): string {
   const hoy = dayjs();
   const inicio = dayjs(v.fechaInicio);
   const fin = dayjs(v.fechaFin);
+  if (!v.activa) return 'Inactiva';
   if (inicio.isAfter(hoy, 'day')) return 'Próxima';
   if (fin.isBefore(hoy, 'day')) return 'Cerrada';
   if (v.limitePostulantes && v._count.postulaciones >= v.limitePostulantes) {
@@ -67,6 +68,8 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
                 ? 'blue'
                 : estado === 'Límite alcanzado'
                 ? 'orange'
+                : estado === 'Inactiva'
+                ? 'default'
                 : 'red';
             return <Tag color={color}>{estado}</Tag>;
           }

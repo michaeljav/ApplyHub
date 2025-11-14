@@ -16,7 +16,7 @@ import {
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 type DocumentoTipo =
   | 'CEDULA'
@@ -31,6 +31,26 @@ type DocumentoFormValue = {
   obligatorio?: boolean;
   orden?: number;
   tipoDocumento?: DocumentoTipo;
+};
+
+type VacanteDocumentoData = {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  obligatorio: boolean;
+  orden: number;
+  tipoDocumento: DocumentoTipo;
+};
+
+type VacanteDetalle = {
+  id: number;
+  titulo: string;
+  requisitos: string;
+  beneficios: string;
+  fechaInicio: string;
+  fechaFin: string;
+  limitePostulantes: number | null;
+  documentosRequeridos: VacanteDocumentoData[];
 };
 
 const DEFAULT_TEMPLATE_DOCS: DocumentoFormValue[] = [
@@ -112,7 +132,7 @@ type FormValues = {
   documentos?: DocumentoFormValue[];
 };
 
-type CreatePayload = {
+type SavePayload = {
   titulo: string;
   requisitos: string;
   beneficios: string;
@@ -130,18 +150,66 @@ type CreatePayload = {
 
 interface VacanteFormProps {
   onCreated?: () => void;
+  onUpdated?: () => void;
+  onCancel?: () => void;
+  vacante?: VacanteDetalle | null;
 }
 
-export default function VacanteForm({ onCreated }: VacanteFormProps) {
+export default function VacanteForm({
+  onCreated,
+  onUpdated,
+  onCancel,
+  vacante
+}: VacanteFormProps) {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
   const [messageApi, contextHolder] = message.useMessage();
   const initialDocs = useMemo(() => readDefaultDocs(), []);
+  const isEditMode = Boolean(vacante);
 
-  const createMutation = useMutation({
-    mutationFn: async (payload: CreatePayload) => {
-      const res = await fetch('/api/vacantes/admin', {
-        method: 'POST',
+  useEffect(() => {
+    if (vacante) {
+      const docs =
+        (vacante.documentosRequeridos
+          ? [...vacante.documentosRequeridos].sort((a, b) => a.orden - b.orden)
+          : []
+        ).map((doc, index) =>
+          normalizeDocForForm(
+            {
+              nombre: doc.nombre,
+              descripcion: doc.descripcion ?? undefined,
+              obligatorio: doc.obligatorio,
+              orden: doc.orden,
+              tipoDocumento: doc.tipoDocumento
+            },
+            index
+          )
+        );
+
+      form.setFieldsValue({
+        titulo: vacante.titulo,
+        requisitos: vacante.requisitos,
+        beneficios: vacante.beneficios,
+        periodo: [dayjs(vacante.fechaInicio), dayjs(vacante.fechaFin)],
+        limitePostulantes: vacante.limitePostulantes ?? undefined,
+        documentos: docs.length ? docs : buildDefaultDocs()
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({
+        documentos: buildDefaultDocs()
+      });
+    }
+  }, [vacante, form]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (payload: SavePayload) => {
+      const url = isEditMode
+        ? `/api/vacantes/admin/${vacante?.id}`
+        : '/api/vacantes/admin';
+      const method = isEditMode ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json'
         },
@@ -154,12 +222,21 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      messageApi.success('Vacante creada correctamente');
-      const defaults = buildDefaultDocs();
-      form.resetFields();
-      form.setFieldsValue({ documentos: defaults });
+      messageApi.success(
+        isEditMode
+          ? 'Vacante actualizada correctamente'
+          : 'Vacante creada correctamente'
+      );
       queryClient.invalidateQueries({ queryKey: ['admin-vacantes'] });
-      onCreated?.();
+      if (isEditMode) {
+        form.resetFields();
+        onUpdated?.();
+      } else {
+        const defaults = buildDefaultDocs();
+        form.resetFields();
+        form.setFieldsValue({ documentos: defaults });
+        onCreated?.();
+      }
     },
     onError: (error: Error) => {
       messageApi.error(error.message);
@@ -191,7 +268,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
       tipoDocumento: doc.tipoDocumento ?? 'OTRO'
     }));
 
-    const payload: CreatePayload = {
+    const payload: SavePayload = {
       titulo: values.titulo.trim(),
       requisitos: values.requisitos.trim(),
       beneficios: values.beneficios.trim(),
@@ -204,7 +281,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
       documentosRequeridos: documentos
     };
 
-    createMutation.mutate(payload);
+    saveMutation.mutate(payload);
   };
 
   const renderNombreField = (fieldIndex: number) => (
@@ -239,7 +316,10 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
   return (
     <>
       {contextHolder}
-      <Card title="Crear nueva vacante" style={{ marginTop: 24 }}>
+      <Card
+        title={isEditMode ? 'Editar vacante' : 'Crear nueva vacante'}
+        style={{ marginTop: 24 }}
+      >
         <Form<FormValues>
           layout="vertical"
           form={form}
@@ -300,7 +380,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
 
           <Divider>Documentos requeridos</Divider>
 
-          <Form.List name="documentos" initialValue={initialDocs}>
+          <Form.List name="documentos">
             {(fields, { add, remove }) => (
               <Space direction="vertical" style={{ width: '100%' }}>
                 {fields.map((field, index) => (
@@ -335,172 +415,6 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
 
                     {renderNombreField(field.name)}
 
-                    {/* <Form.Item noStyle shouldUpdate>
-                      {() => {
-                        const docValues = (form.getFieldValue([
-                          'documentos',
-                          field.name
-                        ]) || {}) as DocumentoFormValue;
-                        const tipoActual = docValues.tipoDocumento ?? 'OTRO';
-                        const extensionesActuales =
-                          docValues.extensiones?.trim();
-
-                        const ensureExtensiones = (valor: string) => {
-                          if (!extensionesActuales) {
-                            form.setFields([
-                              {
-                                name: ['documentos', field.name, 'extensiones'],
-                                value: valor
-                              }
-                            ]);
-                          }
-                        };
-
-                        if (tipoActual === 'CEDULA') {
-                          ensureExtensiones('jpg,png,jpeg');
-                        } else if (
-                          tipoActual === 'CURRICULUM' ||
-                          tipoActual === 'TITULO' ||
-                          tipoActual === 'CERTIFICADO_LABORAL'
-                        ) {
-                          ensureExtensiones('pdf');
-                        }
-
-                        return (
-                          <>
-                            {tipoActual === 'CEDULA' && (
-                              <>
-                                {!docValues.caraCedula &&
-                                  form.setFields([
-                                    {
-                                      name: [
-                                        'documentos',
-                                        field.name,
-                                        'caraCedula'
-                                      ],
-                                      value: 'FRONTAL'
-                                    }
-                                  ])}
-                                <Form.Item
-                                  label="Cara del documento"
-                                  name={[field.name, 'caraCedula']}
-                                  fieldKey={[field.fieldKey, 'caraCedula']}
-                                  rules={[
-                                    {
-                                      required: true,
-                                      message: 'Selecciona la cara de la cédula'
-                                    }
-                                  ]}
-                                >
-                                  <Select
-                                    placeholder="Frontal o reverso"
-                                    options={CEDULA_CARAS}
-                                  />
-                                </Form.Item>
-                              </>
-                            )}
-
-                            {tipoActual === 'TITULO' && (
-                              <Form.Item
-                                label="Grado alcanzado"
-                                name={[field.name, 'tituloNivel']}
-                                fieldKey={[field.fieldKey, 'tituloNivel']}
-                                rules={[
-                                  {
-                                    required: true,
-                                    message: 'Selecciona el grado del título'
-                                  }
-                                ]}
-                              >
-                                <Select
-                                  placeholder="Selecciona el nivel"
-                                  options={TITULO_NIVELES.map((nivel) => ({
-                                    label: nivel,
-                                    value: nivel
-                                  }))}
-                                />
-                              </Form.Item>
-                            )}
-
-                            {tipoActual === 'CERTIFICADO_LABORAL' && (
-                              <>
-                                <Form.Item
-                                  label="Institución o empresa"
-                                  name={[field.name, 'institucion']}
-                                  fieldKey={[field.fieldKey, 'institucion']}
-                                  rules={[
-                                    {
-                                      required: true,
-                                      message:
-                                        'Ingresa la institución o empresa'
-                                    }
-                                  ]}
-                                >
-                                  <Input placeholder="Ej. Industrias IAD" />
-                                </Form.Item>
-                                <Form.Item
-                                  label="Cargo desempeñado"
-                                  name={[field.name, 'cargo']}
-                                  fieldKey={[field.fieldKey, 'cargo']}
-                                >
-                                  <Input placeholder="Ej. Analista senior" />
-                                </Form.Item>
-                                <Form.Item
-                                  label="Fecha de inicio"
-                                  name={[field.name, 'fechaInicio']}
-                                  fieldKey={[field.fieldKey, 'fechaInicio']}
-                                >
-                                  <Input type="date" />
-                                </Form.Item>
-                                <Form.Item
-                                  label="Fecha de finalización"
-                                  name={[field.name, 'fechaFin']}
-                                  fieldKey={[field.fieldKey, 'fechaFin']}
-                                >
-                                  <Input type="date" />
-                                </Form.Item>
-                              </>
-                            )}
-                          </>
-                        );
-                      }}
-                    </Form.Item>
-                    <Form.Item
-                      label="Descripción"
-                      name={[field.name, 'descripcion']}
-                      fieldKey={[field.fieldKey, 'descripcion']}
-                    >
-                      <Input placeholder="Texto mostrado al postulante (opcional)" />
-                    </Form.Item>
-                    <Form.Item
-                      label="Extensiones permitidas (coma separadas)"
-                      name={[field.name, 'extensiones']}
-                      fieldKey={[field.fieldKey, 'extensiones']}
-                    >
-                      <Input placeholder="Ej. pdf" />
-                    </Form.Item>
-
-                    <Form.Item
-                      label="Tamaño máximo (MB)"
-                      name={[field.name, 'tamanoMaxMB']}
-                      fieldKey={[field.fieldKey, 'tamanoMaxMB']}
-                    >
-                      <InputNumber
-                        min={1}
-                        defaultValue={10}
-                        style={{ width: '100%' }}
-                      />
-                    </Form.Item>
-
-                    <Form.Item
-                      label="Orden"
-                      name={[field.name, 'orden']}
-                      fieldKey={[field.fieldKey, 'orden']}
-                    >
-                      <InputNumber min={1} style={{ width: '100%' }} />
-                    </Form.Item>
-
-                   */}
                     <Form.Item
                       label="Obligatorio"
                       name={[field.name, 'obligatorio']}
@@ -541,13 +455,24 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
           </Form.List>
 
           <Form.Item style={{ marginTop: 24 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={createMutation.isPending}
-            >
-              Crear vacante
-            </Button>
+            <Space>
+              {onCancel && (
+                <Button
+                  htmlType="button"
+                  onClick={onCancel}
+                  disabled={saveMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+              )}
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={saveMutation.isPending}
+              >
+                {isEditMode ? 'Guardar cambios' : 'Crear vacante'}
+              </Button>
+            </Space>
           </Form.Item>
         </Form>
       </Card>
