@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { permitirMultiplesVacantes } from '@/lib/config';
 import { guardarArchivoLocal } from '@/lib/upload';
 import type { DocumentoTipo } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
 
 type DocumentoMeta = {
   texto?: string;
@@ -351,6 +352,9 @@ export async function POST(req: Request) {
         }
       });
     }
+
+    revalidatePath('/vacantes');
+    revalidatePath(`/vacantes/${vacanteId}`);
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
