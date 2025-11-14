@@ -297,12 +297,17 @@ http://localhost:5555
 
 npm run build && npm run start
 
-# 10 Generar un archivo de migración
+# 10 Volver a generar esa librería para que tus modelos y tipos coincidan con lo que escribiste en schema.prisma
 
 npx prisma generate
 
-# 10 para pasar los cambios a db
+npx prisma generate solo regenera el Prisma Client, que es la librería interna que Prisma coloca dentro de node_modules/@prisma/client para que tu código pueda usar tus modelos (prisma.user, prisma.vacante, etc.) con sus tipos actualizados. Este comando no toca la base de datos, no crea migraciones, no ejecuta SQL ni modifica tablas; simplemente vuelve a construir el cliente basándose en tu archivo schema.prisma, de modo que tu aplicación tenga disponibles los cambios del esquema a nivel de código (intellisense, tipos de TypeScript y métodos actualizados).
 
+# 10 Crea una nueva migración con el nombre que tú le pongas y lo genera en la carpeta de prisma/migrations y Aplica esa migración a tu base de datos y Regenera el cliente Prisma
+
+npx prisma migrate dev --name add_phone_field
+
+--pone prima el nombre auto.
 npx prisma migrate dev
 
 # 10.1 Subir cambios (incluyendo carpeta prisma/migrations) y en prod:
@@ -318,7 +323,7 @@ Environment variables loaded from .env
 Error:
 EPERM: operation not permitted, rename 'C:\personal\iad\app\ApplyHub\applyhud\node_modules\.prisma\client\query_engine-windows.dll.node.tmp22872' -> 'C:\personal\iad\app\ApplyHub\applyhud\node_modules\.prisma\client\query_engine-windows.dll.node'
 
-SOLUCION
+SOLUCION 0. solucion correcta. cerrar cmds
 
 1. Borra la carpeta del cliente Prisma
    rm -rf node_modules/.prisma

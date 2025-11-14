@@ -3,6 +3,27 @@ import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authConfig } from '@/lib/auth';
 
+type DocumentoTipo = (
+  | 'CEDULA'
+  | 'CURRICULUM'
+  | 'TITULO'
+  | 'CERTIFICADO_LABORAL'
+  | 'OTRO'
+);
+
+const DOCUMENTO_TIPOS = new Set<DocumentoTipo>([
+  'CEDULA',
+  'CURRICULUM',
+  'TITULO',
+  'CERTIFICADO_LABORAL',
+  'OTRO'
+]);
+
+const normalizeDocumentoTipo = (tipo: unknown): DocumentoTipo =>
+  typeof tipo === 'string' && DOCUMENTO_TIPOS.has(tipo as DocumentoTipo)
+    ? (tipo as DocumentoTipo)
+    : 'OTRO';
+
 async function ensureRole(roles: Array<'ADMIN' | 'RRHH'>) {
   const session = await getServerSession(authConfig);
   const rol = (session?.user as { rol?: string } | undefined)?.rol;
@@ -82,13 +103,9 @@ export async function POST(request: Request) {
           nombre: String(doc.nombre),
           descripcion: doc.descripcion ? String(doc.descripcion) : null,
           obligatorio: Boolean(doc.obligatorio),
-          extensiones: Array.isArray(doc.extensiones)
-            ? doc.extensiones.map((ext: string) => ext.toLowerCase())
-            : [],
-          tamanoMaxMB:
-            typeof doc.tamanoMaxMB === 'number' ? doc.tamanoMaxMB : null,
           orden:
-            typeof doc.orden === 'number' ? doc.orden : index + 1
+            typeof doc.orden === 'number' ? doc.orden : index + 1,
+          tipoDocumento: normalizeDocumentoTipo(doc.tipoDocumento)
         }))
     : [];
 

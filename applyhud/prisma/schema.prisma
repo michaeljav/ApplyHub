@@ -38,18 +38,9 @@ model VacanteDocumento {
   vacanteId      Int
   nombre         String
   descripcion    String?
-  obligatorio    Boolean
-  extensiones    String[]
-  tamanoMaxMB    Int?
+  obligatorio    Boolean  
   orden          Int
   tipoDocumento  DocumentoTipo  @default(OTRO)
-  caraCedula     CaraCedula?
-  tituloNivel    String?
-  institucion    String?
-  cargo          String?
-  fechaInicio    DateTime?
-  fechaFin       DateTime?
-
   vacante       Vacante @relation(fields: [vacanteId], references: [id])
 }
 
@@ -78,7 +69,17 @@ model PostulacionArchivo {
   nombreLogico    String
   nombreFinal     String
   ruta            String
+
+  
+  tipoDocumento  DocumentoTipo  @default(OTRO)
+  caraCedula     CaraCedula?
+  tituloNivel    String?
+  institucion    String?
+  cargo          String?
+  fechaInicio    DateTime?
+  fechaFin       DateTime?
   createdAt       DateTime @default(now())
+
 
   postulacion     Postulacion @relation(fields: [postulacionId], references: [id])
 }

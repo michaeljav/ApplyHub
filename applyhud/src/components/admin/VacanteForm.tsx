@@ -11,17 +11,12 @@ import {
   Space,
   Switch,
   Divider,
-  Select,
-  Tooltip
+  Select
 } from 'antd';
-import {
-  MinusCircleOutlined,
-  PlusOutlined,
-  InfoCircleOutlined
-} from '@ant-design/icons';
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 type DocumentoTipo =
   | 'CEDULA'
@@ -30,65 +25,34 @@ type DocumentoTipo =
   | 'CERTIFICADO_LABORAL'
   | 'OTRO';
 
-type CaraCedula = 'FRONTAL' | 'REVERSO';
-
 type DocumentoFormValue = {
   nombre?: string;
   descripcion?: string;
   obligatorio?: boolean;
-  extensiones?: string;
-  tamanoMaxMB?: number;
   orden?: number;
   tipoDocumento?: DocumentoTipo;
-  caraCedula?: CaraCedula;
-  tituloNivel?: string;
-  institucion?: string;
-  cargo?: string;
-  fechaInicio?: string;
-  fechaFin?: string;
-  defaultTemplate?: boolean;
 };
-
-const DEFAULT_DOCS_KEY = 'vacante-docs-defaults';
 
 const DEFAULT_TEMPLATE_DOCS: DocumentoFormValue[] = [
   {
     tipoDocumento: 'CEDULA',
-    caraCedula: 'FRONTAL',
-    extensiones: 'jpg,png,jpeg',
     obligatorio: true,
-    defaultTemplate: true,
     orden: 1
   },
   {
-    tipoDocumento: 'CEDULA',
-    caraCedula: 'REVERSO',
-    extensiones: 'jpg,png,jpeg',
+    tipoDocumento: 'CURRICULUM',
     obligatorio: true,
-    defaultTemplate: true,
     orden: 2
   },
   {
-    tipoDocumento: 'CURRICULUM',
-    extensiones: 'pdf',
+    tipoDocumento: 'TITULO',
     obligatorio: true,
-    defaultTemplate: true,
     orden: 3
   },
   {
-    tipoDocumento: 'TITULO',
-    extensiones: 'pdf',
-    obligatorio: true,
-    defaultTemplate: true,
-    nombre: 'Título',
-    orden: 4
-  },
-  {
     tipoDocumento: 'CERTIFICADO_LABORAL',
-    extensiones: 'pdf',
     obligatorio: false,
-    defaultTemplate: true,
-    orden: 5
+    orden: 4
   }
 ];
 
@@ -99,21 +63,6 @@ const DOCUMENTO_OPTIONS: { label: string; value: DocumentoTipo }[] = [
   { label: 'Certificado laboral', value: 'CERTIFICADO_LABORAL' },
   { label: 'Otro', value: 'OTRO' }
 ];
-
-const CEDULA_CARAS: { label: string; value: CaraCedula }[] = [
-  { label: 'Cédula frontal', value: 'FRONTAL' },
-  { label: 'Cédula reverso', value: 'REVERSO' }
-];
-
-const TITULO_NIVELES = [
-  'Secundario',
-  'Técnico',
-  'Certificación',
-  'Universitario',
-  'Post-grado',
-  'Maestría',
-  'Doctorado'
-] as const;
 
 const createEmptyDoc = (orden = 1): DocumentoFormValue => ({
   obligatorio: orden === 1,
@@ -134,64 +83,21 @@ const normalizeDocForForm = (
 const buildDefaultDocs = () =>
   DEFAULT_TEMPLATE_DOCS.map((doc, index) => normalizeDocForForm(doc, index));
 
-const defaultDocKey = (doc: DocumentoFormValue) => {
-  const tipo = doc.tipoDocumento ?? 'OTRO';
-  if (tipo === 'CEDULA') {
-    return `${tipo}:${doc.caraCedula ?? ''}`;
-  }
-  return tipo;
-};
-
-const mergeWithDefaultDocs = (docs: DocumentoFormValue[]) => {
-  const merged = [...docs];
-  const keys = new Set(
-    merged
-      .map(defaultDocKey)
-      .filter((key) => key !== 'OTRO' && key !== undefined)
-  );
-  DEFAULT_TEMPLATE_DOCS.forEach((baseDoc) => {
-    const key = defaultDocKey(baseDoc);
-    if (!keys.has(key)) {
-      merged.push(baseDoc);
-      keys.add(key);
-    }
-  });
-  return merged.map((doc, index) => normalizeDocForForm(doc, index));
-};
-
 function readDefaultDocs(): DocumentoFormValue[] {
-  if (typeof window === 'undefined') return buildDefaultDocs();
-  const raw = window.localStorage.getItem(DEFAULT_DOCS_KEY);
-  if (!raw) return buildDefaultDocs();
-  try {
-    const parsed = JSON.parse(raw) as DocumentoFormValue[];
-    const sanitized = mergeWithDefaultDocs(parsed);
-    return sanitized;
-  } catch {
-    return buildDefaultDocs();
-  }
-}
-
-function persistDefaultDocs(docs: DocumentoFormValue[]) {
-  if (typeof window === 'undefined') return;
-  const docsToPersist = docs.length > 0 ? docs : buildDefaultDocs();
-  const sanitized = mergeWithDefaultDocs(docsToPersist);
-  window.localStorage.setItem(DEFAULT_DOCS_KEY, JSON.stringify(sanitized));
+  return buildDefaultDocs();
 }
 
 const nombreAutomatico = (doc: DocumentoFormValue): string => {
   const tipo = doc.tipoDocumento ?? 'OTRO';
   switch (tipo) {
     case 'CEDULA':
-      return `Cédula - ${doc.caraCedula === 'REVERSO' ? 'Reverso' : 'Frontal'}`;
+      return 'Cédula';
     case 'CURRICULUM':
       return 'Currículum';
     case 'TITULO':
-      return doc.tituloNivel ? `Título (${doc.tituloNivel})` : 'Título';
+      return 'Título';
     case 'CERTIFICADO_LABORAL':
-      return doc.institucion
-        ? `Certificado laboral - ${doc.institucion}`
-        : 'Certificado laboral';
+      return 'Certificado laboral';
     default:
       return doc.nombre?.trim() || 'Documento';
   }
@@ -217,9 +123,8 @@ type CreatePayload = {
     nombre: string;
     descripcion?: string | null;
     obligatorio: boolean;
-    extensiones: string[];
-    tamanoMaxMB?: number | null;
     orden: number;
+    tipoDocumento: DocumentoTipo;
   }>;
 };
 
@@ -232,7 +137,6 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
   const queryClient = useQueryClient();
   const [messageApi, contextHolder] = message.useMessage();
   const initialDocs = useMemo(() => readDefaultDocs(), []);
-  const pendingDefaultsRef = useRef<DocumentoFormValue[]>(initialDocs);
 
   const createMutation = useMutation({
     mutationFn: async (payload: CreatePayload) => {
@@ -251,13 +155,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
     },
     onSuccess: () => {
       messageApi.success('Vacante creada correctamente');
-      const defaults =
-        pendingDefaultsRef.current.length > 0
-          ? pendingDefaultsRef.current.map((doc, index) =>
-              normalizeDocForForm(doc, index)
-            )
-          : buildDefaultDocs();
-      persistDefaultDocs(defaults);
+      const defaults = buildDefaultDocs();
       form.resetFields();
       form.setFieldsValue({ documentos: defaults });
       queryClient.invalidateQueries({ queryKey: ['admin-vacantes'] });
@@ -285,43 +183,13 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
           tipoDocumento: doc.tipoDocumento ?? 'OTRO'
         })) ?? [];
 
-    pendingDefaultsRef.current = docsFromForm.filter(
-      (doc) => doc.defaultTemplate
-    );
-
-    const documentos = docsFromForm.map((doc, index) => {
-      const tipo = doc.tipoDocumento ?? 'OTRO';
-      const descripcionPayload = {
-        texto: doc.descripcion?.trim() || '',
-        tipoDocumento: tipo,
-        caraCedula: tipo === 'CEDULA' ? doc.caraCedula ?? 'FRONTAL' : null,
-        tituloNivel: tipo === 'TITULO' ? doc.tituloNivel ?? null : null,
-        certificadoLaboral:
-          tipo === 'CERTIFICADO_LABORAL'
-            ? {
-                institucion: doc.institucion || '',
-                cargo: doc.cargo || '',
-                fechaInicio: doc.fechaInicio || null,
-                fechaFin: doc.fechaFin || null
-              }
-            : null
-      };
-
-      return {
-        nombre: nombreAutomatico(doc),
-        descripcion: JSON.stringify(descripcionPayload),
-        obligatorio: Boolean(doc.obligatorio),
-        extensiones: doc.extensiones
-          ? doc.extensiones
-              .split(',')
-              .map((ext) => ext.trim().toLowerCase())
-              .filter(Boolean)
-          : [],
-        tamanoMaxMB:
-          typeof doc.tamanoMaxMB === 'number' ? doc.tamanoMaxMB : null,
-        orden: typeof doc.orden === 'number' ? doc.orden : index + 1
-      };
-    });
+    const documentos = docsFromForm.map((doc, index) => ({
+      nombre: nombreAutomatico(doc),
+      descripcion: doc.descripcion?.trim() || null,
+      obligatorio: Boolean(doc.obligatorio),
+      orden: typeof doc.orden === 'number' ? doc.orden : index + 1,
+      tipoDocumento: doc.tipoDocumento ?? 'OTRO'
+    }));
 
     const payload: CreatePayload = {
       titulo: values.titulo.trim(),
@@ -345,7 +213,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
         const docValues = (form.getFieldValue(['documentos', fieldIndex]) ||
           {}) as DocumentoFormValue;
         const tipoActual = docValues.tipoDocumento ?? 'OTRO';
-        if (tipoActual === 'OTRO' || tipoActual === 'TITULO') {
+        if (tipoActual === 'OTRO') {
           return (
             <Form.Item
               label="Nombre del documento"
@@ -432,10 +300,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
 
           <Divider>Documentos requeridos</Divider>
 
-          <Form.List
-            name="documentos"
-            initialValue={initialDocs?.slice(2) || []}
-          >
+          <Form.List name="documentos" initialValue={initialDocs}>
             {(fields, { add, remove }) => (
               <Space direction="vertical" style={{ width: '100%' }}>
                 {fields.map((field, index) => (
@@ -470,7 +335,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
 
                     {renderNombreField(field.name)}
 
-                    <Form.Item noStyle shouldUpdate>
+                    {/* <Form.Item noStyle shouldUpdate>
                       {() => {
                         const docValues = (form.getFieldValue([
                           'documentos',
@@ -635,6 +500,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
                       <InputNumber min={1} style={{ width: '100%' }} />
                     </Form.Item>
 
+                   */}
                     <Form.Item
                       label="Obligatorio"
                       name={[field.name, 'obligatorio']}
