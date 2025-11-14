@@ -62,6 +62,8 @@ export default function AdminVacantesPage() {
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingVacante, setEditingVacante] = useState<VacanteDetalleAdmin | null>(null);
   const [loadingVacante, setLoadingVacante] = useState(false);
+  const [prefillVacante, setPrefillVacante] = useState<VacanteDetalleAdmin | null>(null);
+  const [prefillPending, setPrefillPending] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const [messageApi, contextHolder] = message.useMessage();
@@ -99,6 +101,9 @@ export default function AdminVacantesPage() {
   const closeForm = () => {
     setFormMode(null);
     setEditingVacante(null);
+    setPrefillVacante(null);
+    setPrefillPending(false);
+    setLoadingVacante(false);
   };
 
   const handleCreateClick = () => {
@@ -107,23 +112,51 @@ export default function AdminVacantesPage() {
       return;
     }
     setEditingVacante(null);
+    setPrefillVacante(null);
+    setPrefillPending(false);
     setFormMode('create');
+  };
+
+  const fetchVacanteDetalle = async (
+    vacanteId: number
+  ): Promise<VacanteDetalleAdmin> => {
+    const res = await fetch(`/api/vacantes/admin/${vacanteId}`);
+    if (!res.ok) throw new Error('Error cargando vacante');
+    return res.json();
   };
 
   const handleEditClick = async (vacanteId: number) => {
     setFormMode('edit');
     setLoadingVacante(true);
     setEditingVacante(null);
+    setPrefillVacante(null);
+    setPrefillPending(false);
     try {
-      const res = await fetch(`/api/vacantes/admin/${vacanteId}`);
-      if (!res.ok) throw new Error('Error cargando vacante');
-      const detalle: VacanteDetalleAdmin = await res.json();
+      const detalle = await fetchVacanteDetalle(vacanteId);
       setEditingVacante(detalle);
     } catch {
       messageApi.error('No se pudo cargar la vacante seleccionada');
       closeForm();
     } finally {
       setLoadingVacante(false);
+    }
+  };
+
+  const handleDuplicateClick = async (vacanteId: number) => {
+    setFormMode('create');
+    setPrefillVacante(null);
+    setEditingVacante(null);
+    setLoadingVacante(true);
+    setPrefillPending(true);
+    try {
+      const detalle = await fetchVacanteDetalle(vacanteId);
+      setPrefillVacante(detalle);
+    } catch {
+      messageApi.error('No se pudo cargar la vacante a duplicar');
+      closeForm();
+    } finally {
+      setLoadingVacante(false);
+      setPrefillPending(false);
     }
   };
 
@@ -189,6 +222,9 @@ export default function AdminVacantesPage() {
           <Button type="link" onClick={() => handleEditClick(record.id)}>
             Editar
           </Button>
+          <Button type="link" onClick={() => handleDuplicateClick(record.id)}>
+            Duplicar
+          </Button>
           <Popconfirm
             title={record.activa ? 'Inactivar vacante' : 'Activar vacante'}
             description={`Seguro que deseas ${
@@ -235,11 +271,16 @@ export default function AdminVacantesPage() {
       </div>
       {formMode && (
         <div style={{ marginTop: 24 }}>
-          {formMode === 'edit' && (!editingVacante || loadingVacante) ? (
+          {((formMode === 'edit' &&
+            (loadingVacante || !editingVacante)) ||
+            (formMode === 'create' &&
+              prefillPending &&
+              !prefillVacante)) ? (
             <Spin tip="Cargando vacante..." />
           ) : (
             <VacanteForm
               vacante={formMode === 'edit' ? editingVacante : undefined}
+              prefill={formMode === 'create' ? prefillVacante : undefined}
               onCreated={closeForm}
               onUpdated={closeForm}
               onCancel={closeForm}

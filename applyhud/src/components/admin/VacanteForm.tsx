@@ -16,7 +16,7 @@ import {
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type DocumentoTipo =
   | 'CEDULA'
@@ -153,25 +153,42 @@ interface VacanteFormProps {
   onUpdated?: () => void;
   onCancel?: () => void;
   vacante?: VacanteDetalle | null;
+  prefill?: VacanteDetalle | null;
 }
 
 export default function VacanteForm({
   onCreated,
   onUpdated,
   onCancel,
-  vacante
+  vacante,
+  prefill
 }: VacanteFormProps) {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
   const [messageApi, contextHolder] = message.useMessage();
   const initialDocs = useMemo(() => readDefaultDocs(), []);
-  const isEditMode = Boolean(vacante);
+  const [duplicateMode, setDuplicateMode] = useState(false);
+  const isPrefillMode = !vacante && Boolean(prefill);
+  const isDuplicating = Boolean(vacante) && duplicateMode;
+  const isEditMode = Boolean(vacante) && !duplicateMode;
+  const cardTitle = isDuplicating
+    ? 'Duplicar vacante'
+    : isEditMode
+    ? 'Editar vacante'
+    : isPrefillMode
+    ? 'Crear nueva vacante (copia)'
+    : 'Crear nueva vacante';
+  const submitLabel = isDuplicating
+    ? 'Crear copia'
+    : isEditMode
+    ? 'Guardar cambios'
+    : 'Crear vacante';
 
-  useEffect(() => {
-    if (vacante) {
+  const fillFormWithVacante = useCallback(
+    (source: VacanteDetalle) => {
       const docs =
-        (vacante.documentosRequeridos
-          ? [...vacante.documentosRequeridos].sort((a, b) => a.orden - b.orden)
+        (source.documentosRequeridos
+          ? [...source.documentosRequeridos].sort((a, b) => a.orden - b.orden)
           : []
         ).map((doc, index) =>
           normalizeDocForForm(
@@ -187,20 +204,56 @@ export default function VacanteForm({
         );
 
       form.setFieldsValue({
-        titulo: vacante.titulo,
-        requisitos: vacante.requisitos,
-        beneficios: vacante.beneficios,
-        periodo: [dayjs(vacante.fechaInicio), dayjs(vacante.fechaFin)],
-        limitePostulantes: vacante.limitePostulantes ?? undefined,
+        titulo: source.titulo,
+        requisitos: source.requisitos,
+        beneficios: source.beneficios,
+        periodo: [dayjs(source.fechaInicio), dayjs(source.fechaFin)],
+        limitePostulantes: source.limitePostulantes ?? undefined,
         documentos: docs.length ? docs : buildDefaultDocs()
       });
+    },
+    [form]
+  );
+
+  useEffect(() => {
+    if (vacante) {
+      fillFormWithVacante(vacante);
+      setDuplicateMode(false);
+    } else if (prefill) {
+      const prefillData: VacanteDetalle = {
+        ...prefill,
+        titulo: prefill.titulo.includes('(copia)')
+          ? prefill.titulo
+          : `${prefill.titulo} (copia)`
+      };
+      fillFormWithVacante(prefillData);
+      setDuplicateMode(false);
     } else {
       form.resetFields();
       form.setFieldsValue({
         documentos: buildDefaultDocs()
       });
+      setDuplicateMode(false);
     }
-  }, [vacante, form]);
+  }, [vacante, prefill, fillFormWithVacante, form]);
+
+  const handleStartDuplicate = () => {
+    if (!vacante) return;
+    const tituloActual = form.getFieldValue('titulo');
+    if (tituloActual && !tituloActual.toLowerCase().includes('copia')) {
+      form.setFieldsValue({ titulo: `${tituloActual} (copia)` });
+    }
+    setDuplicateMode(true);
+    messageApi.info(
+      'Estas creando una copia. Ajusta los campos y guarda para crear una nueva vacante.'
+    );
+  };
+
+  const handleCancelDuplicate = () => {
+    if (!vacante) return;
+    setDuplicateMode(false);
+    fillFormWithVacante(vacante);
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (payload: SavePayload) => {
@@ -325,10 +378,7 @@ export default function VacanteForm({
   return (
     <>
       {contextHolder}
-      <Card
-        title={isEditMode ? 'Editar vacante' : 'Crear nueva vacante'}
-        style={{ marginTop: 24 }}
-      >
+      <Card title={cardTitle} style={{ marginTop: 24 }}>
         <Form<FormValues>
           layout="vertical"
           form={form}
@@ -464,7 +514,25 @@ export default function VacanteForm({
           </Form.List>
 
           <Form.Item style={{ marginTop: 24 }}>
-            <Space>
+            <Space wrap>
+              {Boolean(vacante) && !duplicateMode && (
+                <Button
+                  htmlType="button"
+                  onClick={handleStartDuplicate}
+                  disabled={saveMutation.isPending}
+                >
+                  Duplicar como nueva
+                </Button>
+              )}
+              {Boolean(vacante) && duplicateMode && (
+                <Button
+                  htmlType="button"
+                  onClick={handleCancelDuplicate}
+                  disabled={saveMutation.isPending}
+                >
+                  Cancelar duplicado
+                </Button>
+              )}
               {onCancel && (
                 <Button
                   htmlType="button"
@@ -479,7 +547,7 @@ export default function VacanteForm({
                 htmlType="submit"
                 loading={saveMutation.isPending}
               >
-                {isEditMode ? 'Guardar cambios' : 'Crear vacante'}
+                {submitLabel}
               </Button>
             </Space>
           </Form.Item>
