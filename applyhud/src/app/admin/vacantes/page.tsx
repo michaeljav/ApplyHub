@@ -61,6 +61,21 @@ function calcularEstado(v: Vacante): string {
   return 'Abierta';
 }
 
+function tiempoRestante(fechaFin: string) {
+  const fin = dayjs(fechaFin);
+  const ahora = dayjs();
+  const diffMin = fin.diff(ahora, 'minute');
+  if (diffMin < 0) return { text: 'Cerrada', color: 'red' };
+  if (diffMin < 60) return { text: `Cierra en ${diffMin} min`, color: 'red' };
+  const diffHoras = fin.diff(ahora, 'hour');
+  if (diffHoras < 24) return { text: `Cierra en ${diffHoras} h`, color: 'orange' };
+  const diffDias = fin.diff(ahora, 'day');
+  return {
+    text: `Cierra en ${diffDias} días`,
+    color: diffDias <= 3 ? 'orange' : 'green'
+  };
+}
+
 export default function AdminVacantesPage() {
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editingVacante, setEditingVacante] = useState<VacanteDetalleAdmin | null>(null);
@@ -201,6 +216,14 @@ export default function AdminVacantesPage() {
       title: 'Postulantes',
       key: 'postulantes',
       render: (_: any, record: Vacante) => record._count.postulaciones
+    },
+    {
+      title: 'Cierre',
+      key: 'cierre',
+      render: (_: any, record: Vacante) => {
+        const countdown = tiempoRestante(record.fechaFin);
+        return <Tag color={countdown.color}>{countdown.text}</Tag>;
+      }
     },
     {
       title: 'Estado',

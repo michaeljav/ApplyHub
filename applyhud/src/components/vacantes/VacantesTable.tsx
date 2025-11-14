@@ -9,6 +9,24 @@ export type VacanteWithCount = Vacante & {
   _count: { postulaciones: number };
 };
 
+type CountdownInfo = { text: string; color: string };
+
+function tiempoRestante(fechaFin: string): CountdownInfo {
+  const fin = dayjs(fechaFin);
+  const ahora = dayjs();
+  const diffMin = fin.diff(ahora, 'minute');
+  if (diffMin < 0) return { text: 'Cerrada', color: 'red' };
+  if (diffMin < 60) return { text: `Cierra en ${diffMin} min`, color: 'red' };
+  const diffHoras = fin.diff(ahora, 'hour');
+  if (diffHoras < 24)
+    return { text: `Cierra en ${diffHoras} h`, color: 'orange' };
+  const diffDias = fin.diff(ahora, 'day');
+  return {
+    text: `Cierra en ${diffDias} días`,
+    color: diffDias <= 3 ? 'orange' : 'green'
+  };
+}
+
 function calcularEstado(v: VacanteWithCount): string {
   const hoy = dayjs();
   const inicio = dayjs(v.fechaInicio);
@@ -55,6 +73,15 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
       dataIndex: 'fechaFin',
       key: 'fechaFin',
       render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+      responsive: ['sm']
+    },
+    {
+      title: 'Cierre',
+      key: 'cierre',
+      render: (_: any, record: VacanteWithCount) => {
+        const countdown = tiempoRestante(record.fechaFin);
+        return <Tag color={countdown.color}>{countdown.text}</Tag>;
+      },
       responsive: ['sm']
     },
     {

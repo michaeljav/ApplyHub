@@ -17,7 +17,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <ConfigProvider
         theme={{
           token: {
-            fontSize: 24, // 👈 fuente global un poco más grande
+            fontSize: 20, // 👈 fuente global un poco más grande
             borderRadius: 8, // 👈 bordes más modernos
             controlHeight: 40 // 👈 altura de inputs / selects / botones
           }
