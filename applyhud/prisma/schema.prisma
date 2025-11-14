@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum DocumentoTipo {
+  CEDULA
+  CURRICULUM
+  TITULO
+  CERTIFICADO_LABORAL
+  OTRO
+}
+
+enum CaraCedula {
+  FRONTAL
+  REVERSO
+}
+
 model Vacante {
   id                   Int                  @id @default(autoincrement())
   titulo               String
@@ -21,14 +34,21 @@ model Vacante {
 }
 
 model VacanteDocumento {
-  id            Int      @id @default(autoincrement())
-  vacanteId     Int
-  nombre        String
-  descripcion   String?
-  obligatorio   Boolean
-  extensiones   String[]
-  tamanoMaxMB   Int?
-  orden         Int
+  id             Int            @id @default(autoincrement())
+  vacanteId      Int
+  nombre         String
+  descripcion    String?
+  obligatorio    Boolean
+  extensiones    String[]
+  tamanoMaxMB    Int?
+  orden          Int
+  tipoDocumento  DocumentoTipo  @default(OTRO)
+  caraCedula     CaraCedula?
+  tituloNivel    String?
+  institucion    String?
+  cargo          String?
+  fechaInicio    DateTime?
+  fechaFin       DateTime?
 
   vacante       Vacante @relation(fields: [vacanteId], references: [id])
 }

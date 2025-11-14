@@ -296,3 +296,34 @@ http://localhost:5555
 # 9 Ver como correra en produccion
 
 npm run build && npm run start
+
+# 10 Generar un archivo de migración
+
+npx prisma generate
+
+# 10 para pasar los cambios a db
+
+npx prisma migrate dev
+
+# 10.1 Subir cambios (incluyendo carpeta prisma/migrations) y en prod:
+
+Este comando se usa cuando ya tienes migraciones creadas y solo quieres aplicarlas.
+npx prisma migrate deploy
+
+# 11 error de prisma
+
+Michael Javier@LT-32970 MINGW64 /c/personal/iad/app/ApplyHub/applyhud (main)
+$ npx prisma generate
+Environment variables loaded from .env
+Error:
+EPERM: operation not permitted, rename 'C:\personal\iad\app\ApplyHub\applyhud\node_modules\.prisma\client\query_engine-windows.dll.node.tmp22872' -> 'C:\personal\iad\app\ApplyHub\applyhud\node_modules\.prisma\client\query_engine-windows.dll.node'
+
+SOLUCION
+
+1. Borra la carpeta del cliente Prisma
+   rm -rf node_modules/.prisma
+   rm -rf node_modules/@prisma/client
+   🔹 2. Reinstala dependencias
+   npm install
+2. Regenera cliente
+   npx prisma generate

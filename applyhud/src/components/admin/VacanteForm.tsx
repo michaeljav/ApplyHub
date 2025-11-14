@@ -51,6 +51,47 @@ type DocumentoFormValue = {
 
 const DEFAULT_DOCS_KEY = 'vacante-docs-defaults';
 
+const DEFAULT_TEMPLATE_DOCS: DocumentoFormValue[] = [
+  {
+    tipoDocumento: 'CEDULA',
+    caraCedula: 'FRONTAL',
+    extensiones: 'jpg,png,jpeg',
+    obligatorio: true,
+    defaultTemplate: true,
+    orden: 1
+  },
+  {
+    tipoDocumento: 'CEDULA',
+    caraCedula: 'REVERSO',
+    extensiones: 'jpg,png,jpeg',
+    obligatorio: true,
+    defaultTemplate: true,
+    orden: 2
+  },
+  {
+    tipoDocumento: 'CURRICULUM',
+    extensiones: 'pdf',
+    obligatorio: true,
+    defaultTemplate: true,
+    orden: 3
+  },
+  {
+    tipoDocumento: 'TITULO',
+    extensiones: 'pdf',
+    obligatorio: true,
+    defaultTemplate: true,
+    nombre: 'Título',
+    orden: 4
+  },
+  {
+    tipoDocumento: 'CERTIFICADO_LABORAL',
+    extensiones: 'pdf',
+    obligatorio: false,
+    defaultTemplate: true,
+    orden: 5
+  }
+];
+
 const DOCUMENTO_OPTIONS: { label: string; value: DocumentoTipo }[] = [
   { label: 'Cédula', value: 'CEDULA' },
   { label: 'Currículum', value: 'CURRICULUM' },
@@ -90,30 +131,51 @@ const normalizeDocForForm = (
   tipoDocumento: doc.tipoDocumento ?? 'OTRO'
 });
 
+const buildDefaultDocs = () =>
+  DEFAULT_TEMPLATE_DOCS.map((doc, index) => normalizeDocForForm(doc, index));
+
+const defaultDocKey = (doc: DocumentoFormValue) => {
+  const tipo = doc.tipoDocumento ?? 'OTRO';
+  if (tipo === 'CEDULA') {
+    return `${tipo}:${doc.caraCedula ?? ''}`;
+  }
+  return tipo;
+};
+
+const mergeWithDefaultDocs = (docs: DocumentoFormValue[]) => {
+  const merged = [...docs];
+  const keys = new Set(
+    merged
+      .map(defaultDocKey)
+      .filter((key) => key !== 'OTRO' && key !== undefined)
+  );
+  DEFAULT_TEMPLATE_DOCS.forEach((baseDoc) => {
+    const key = defaultDocKey(baseDoc);
+    if (!keys.has(key)) {
+      merged.push(baseDoc);
+      keys.add(key);
+    }
+  });
+  return merged.map((doc, index) => normalizeDocForForm(doc, index));
+};
+
 function readDefaultDocs(): DocumentoFormValue[] {
-  if (typeof window === 'undefined') return [createEmptyDoc(1)];
+  if (typeof window === 'undefined') return buildDefaultDocs();
   const raw = window.localStorage.getItem(DEFAULT_DOCS_KEY);
-  if (!raw) return [createEmptyDoc(1)];
+  if (!raw) return buildDefaultDocs();
   try {
     const parsed = JSON.parse(raw) as DocumentoFormValue[];
-    return parsed.length
-      ? parsed.map((doc, index) => normalizeDocForForm(doc, index))
-      : [createEmptyDoc(1)];
+    const sanitized = mergeWithDefaultDocs(parsed);
+    return sanitized;
   } catch {
-    return [createEmptyDoc(1)];
+    return buildDefaultDocs();
   }
 }
 
 function persistDefaultDocs(docs: DocumentoFormValue[]) {
   if (typeof window === 'undefined') return;
-  const sanitized =
-    docs.length > 0
-      ? docs.map((doc, index) => ({
-          ...doc,
-          orden: doc.orden ?? index + 1,
-          tipoDocumento: doc.tipoDocumento ?? 'OTRO'
-        }))
-      : [createEmptyDoc(1)];
+  const docsToPersist = docs.length > 0 ? docs : buildDefaultDocs();
+  const sanitized = mergeWithDefaultDocs(docsToPersist);
   window.localStorage.setItem(DEFAULT_DOCS_KEY, JSON.stringify(sanitized));
 }
 
@@ -121,9 +183,7 @@ const nombreAutomatico = (doc: DocumentoFormValue): string => {
   const tipo = doc.tipoDocumento ?? 'OTRO';
   switch (tipo) {
     case 'CEDULA':
-      return `Cédula - ${
-        doc.caraCedula === 'REVERSO' ? 'Reverso' : 'Frontal'
-      }`;
+      return `Cédula - ${doc.caraCedula === 'REVERSO' ? 'Reverso' : 'Frontal'}`;
     case 'CURRICULUM':
       return 'Currículum';
     case 'TITULO':
@@ -171,11 +231,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
   const [form] = Form.useForm<FormValues>();
   const queryClient = useQueryClient();
   const [messageApi, contextHolder] = message.useMessage();
-  const initialDocs = useMemo(
-    () =>
-      readDefaultDocs().map((doc, index) => normalizeDocForForm(doc, index)),
-    []
-  );
+  const initialDocs = useMemo(() => readDefaultDocs(), []);
   const pendingDefaultsRef = useRef<DocumentoFormValue[]>(initialDocs);
 
   const createMutation = useMutation({
@@ -200,7 +256,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
           ? pendingDefaultsRef.current.map((doc, index) =>
               normalizeDocForForm(doc, index)
             )
-          : [createEmptyDoc(1)];
+          : buildDefaultDocs();
       persistDefaultDocs(defaults);
       form.resetFields();
       form.setFieldsValue({ documentos: defaults });
@@ -376,7 +432,10 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
 
           <Divider>Documentos requeridos</Divider>
 
-          <Form.List name="documentos">
+          <Form.List
+            name="documentos"
+            initialValue={initialDocs?.slice(2) || []}
+          >
             {(fields, { add, remove }) => (
               <Space direction="vertical" style={{ width: '100%' }}>
                 {fields.map((field, index) => (
@@ -464,8 +523,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
                                   rules={[
                                     {
                                       required: true,
-                                      message:
-                                        'Selecciona la cara de la cédula'
+                                      message: 'Selecciona la cara de la cédula'
                                     }
                                   ]}
                                 >
@@ -586,7 +644,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
                       <Switch />
                     </Form.Item>
 
-                    <Form.Item
+                    {/* <Form.Item
                       label={
                         <Space size={4}>
                           <span>Usar como plantilla</span>
@@ -600,7 +658,7 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
                       valuePropName="checked"
                     >
                       <Switch />
-                    </Form.Item>
+                    </Form.Item> */}
                   </Card>
                 ))}
 
@@ -630,4 +688,3 @@ export default function VacanteForm({ onCreated }: VacanteFormProps) {
     </>
   );
 }
-
