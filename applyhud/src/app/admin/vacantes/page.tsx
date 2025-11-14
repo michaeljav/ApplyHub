@@ -297,13 +297,15 @@ export default function AdminVacantesPage() {
           )}
         </div>
       )}
-      <Table
-        rowKey="id"
-        loading={isLoading}
-        dataSource={data || []}
-        columns={columns}
-        style={{ marginTop: 32 }}
-      />
+      <div style={{ width: '100%', overflowX: 'auto', marginTop: 32 }}>
+        <Table
+          rowKey="id"
+          loading={isLoading}
+          dataSource={data || []}
+          columns={columns}
+          scroll={{ x: 'max-content' }}
+        />
+      </div>
     </main>
     </RequireAuth>
   );

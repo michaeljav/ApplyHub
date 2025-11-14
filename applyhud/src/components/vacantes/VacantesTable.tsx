@@ -27,63 +27,73 @@ interface VacantesTableProps {
 }
 
 export default function VacantesTable({ data = [] }: VacantesTableProps) {
+  const columns = [
+    {
+      title: 'Código',
+      dataIndex: 'id',
+      key: 'codigo',
+      width: 90,
+      responsive: ['sm']
+    },
+    {
+      title: 'Vacante',
+      dataIndex: 'titulo',
+      key: 'titulo',
+      render: (text: string, record: VacanteWithCount) => (
+        <Link href={`/vacantes/${record.id}`}>{text}</Link>
+      )
+    },
+    {
+      title: 'Inicio',
+      dataIndex: 'fechaInicio',
+      key: 'fechaInicio',
+      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+      responsive: ['sm']
+    },
+    {
+      title: 'Fin',
+      dataIndex: 'fechaFin',
+      key: 'fechaFin',
+      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+      responsive: ['sm']
+    },
+    {
+      title: 'Postulantes',
+      key: 'postulantes',
+      render: (_: any, record: VacanteWithCount) =>
+        record._count.postulaciones,
+      responsive: ['md']
+    },
+    {
+      title: 'Estado',
+      key: 'estado',
+      render: (_: any, record: VacanteWithCount) => {
+        const estado = calcularEstado(record);
+        const color =
+          estado === 'Abierta'
+            ? 'green'
+            : estado === 'Proxima'
+            ? 'blue'
+            : estado === 'Limite alcanzado'
+            ? 'orange'
+            : estado === 'Inactiva'
+            ? 'default'
+            : 'red';
+        return <Tag color={color}>{estado}</Tag>;
+      }
+    }
+  ];
+
   return (
-    <Table
-      rowKey="id"
-      columns={[
-        {
-          title: 'Código',
-          dataIndex: 'id',
-          key: 'codigo',
-          width: 90
-        },
-        {
-          title: 'Vacante',
-          dataIndex: 'titulo',
-          key: 'titulo',
-          render: (text: string, record: VacanteWithCount) => (
-            <Link href={`/vacantes/${record.id}`}>{text}</Link>
-          )
-        },
-        {
-          title: 'Inicio',
-          dataIndex: 'fechaInicio',
-          key: 'fechaInicio',
-          render: (value: string) => dayjs(value).format('DD/MM/YYYY')
-        },
-        {
-          title: 'Fin',
-          dataIndex: 'fechaFin',
-          key: 'fechaFin',
-          render: (value: string) => dayjs(value).format('DD/MM/YYYY')
-        },
-        {
-          title: 'Postulantes',
-          key: 'postulantes',
-          render: (_: any, record: VacanteWithCount) => record._count.postulaciones
-        },
-        {
-          title: 'Estado',
-          key: 'estado',
-          render: (_: any, record: VacanteWithCount) => {
-            const estado = calcularEstado(record);
-            const color =
-              estado === 'Abierta'
-                ? 'green'
-                : estado === 'Próxima'
-                ? 'blue'
-                : estado === 'Límite alcanzado'
-                ? 'orange'
-                : estado === 'Inactiva'
-                ? 'default'
-                : 'red';
-            return <Tag color={color}>{estado}</Tag>;
-          }
-        }
-      ]}
-      dataSource={data}
-      pagination={false}
-      style={{ marginTop: 16 }}
-    />
+    <div style={{ width: '100%', overflowX: 'auto' }}>
+      <Table
+        rowKey="id"
+        columns={columns}
+        scroll={{ x: 'max-content' }}
+        dataSource={data}
+        pagination={false}
+        style={{ marginTop: 16 }}
+      />
+    </div>
   );
 }
