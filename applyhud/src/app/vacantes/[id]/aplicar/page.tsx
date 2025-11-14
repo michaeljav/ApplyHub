@@ -12,6 +12,7 @@ import {
   Modal
 } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { UploadFile } from 'antd/es/upload/interface';
@@ -100,6 +101,12 @@ const GRID_STYLES = {
 const SINGLE_APPLICATION_WARNING =
   'Solo puedes aplicar a una vacante a la vez. Completa tu proceso actual antes de iniciar uno nuevo.';
 const HUMAN_CONFIRMATION_TEXT = 'SOY HUMANO';
+const CARD_STYLE = {
+  backgroundColor: '#fff',
+  borderRadius: 16,
+  border: '1px solid #eff0f4',
+  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.05)'
+} as const;
 
 export default function AplicarPage({ params }: { params: { id: string } }) {
   const [form] = Form.useForm();
@@ -262,6 +269,9 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
   if (loading || !vacante) {
     return <main style={{ padding: 24 }}>Cargando...</main>;
   }
+
+  const inicio = dayjs(vacante.fechaInicio);
+  const fin = dayjs(vacante.fechaFin);
 
   const renderDocumentoCampos = (doc: VacanteDocumento) => {
     const meta = parseDocumentoMeta(doc.descripcion);
@@ -599,166 +609,324 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
     }
 
     return (
-      <section key={doc.id} style={{ marginBottom: 24 }}>
+      <section
+        key={doc.id}
+        style={{
+          ...CARD_STYLE,
+          padding: 20,
+          marginBottom: 24
+        }}
+      >
         {header}
-        <div>{content}</div>
+        <div style={{ marginTop: 12 }}>{content}</div>
       </section>
     );
   };
   return (
-    <main style={{ padding: 24, maxWidth: 700 }}>
-      <div
-        role="alert"
-        style={{
-          backgroundColor: '#fff8e1',
-          border: '1px solid #ffe58f',
-          color: '#7a5300',
-          textAlign: 'center',
-          padding: '12px 16px',
-          borderRadius: 8,
-          fontWeight: 600,
-          marginBottom: 24
-        }}
-      >
-        {SINGLE_APPLICATION_WARNING}
-      </div>
-      <h1>Aplicar a: {vacante.titulo}</h1>
-      {vacante.pdfInformativoNombre && (
-        <p style={{ marginBottom: 16 }}>
-          Material adicional:{' '}
-          <a
-            href={`/api/vacantes/${vacante.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
+    <main
+      style={{
+        padding: '32px 16px 48px',
+        backgroundColor: '#f5f7fb',
+        minHeight: '100vh'
+      }}
+    >
+      <div style={{ maxWidth: 960, margin: '0 auto' }}>
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#fff8e1',
+            border: '1px solid #ffe58f',
+            color: '#7a5300',
+            textAlign: 'center',
+            padding: '12px 16px',
+            borderRadius: 8,
+            fontWeight: 600,
+            marginBottom: 24
+          }}
+        >
+          {SINGLE_APPLICATION_WARNING}
+        </div>
+
+        <section
+          style={{
+            ...CARD_STYLE,
+            padding: 32,
+            marginBottom: 32
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#6c757d'
+            }}
           >
-            Descargar {vacante.pdfInformativoNombre}
-          </a>
-        </p>
-      )}
-      <Form form={form} layout="vertical" onFinish={handleFinish}>
-        <Form.Item name="website" style={{ display: 'none' }}>
-          <Input tabIndex={-1} autoComplete="off" />
-        </Form.Item>
-        <Form.Item label="Nombres" name="nombres" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item
-          label="Apellidos"
-          name="apellidos"
-          rules={[{ required: true }]}
+            Proceso de aplicacion
+          </span>
+          <h1 style={{ margin: '8px 0 12px', fontSize: 30 }}>
+            Aplica a: {vacante.titulo}
+          </h1>
+          <p style={{ color: '#4a4a4a', marginBottom: 24 }}>
+            Completa el formulario con tus datos personales y adjunta la
+            documentacion solicitada para participar en este proceso de
+            seleccion.
+          </p>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 16
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: '#f8f9fb',
+                borderRadius: 12,
+                padding: 16,
+                border: '1px solid #eef0f4'
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  letterSpacing: '0.08em',
+                  color: '#8c8c8c',
+                  textTransform: 'uppercase'
+                }}
+              >
+                Codigo de vacante
+              </p>
+              <p style={{ margin: '6px 0 0', fontWeight: 600 }}>
+                #{vacante.id}
+              </p>
+            </div>
+            <div
+              style={{
+                backgroundColor: '#f8f9fb',
+                borderRadius: 12,
+                padding: 16,
+                border: '1px solid #eef0f4'
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  letterSpacing: '0.08em',
+                  color: '#8c8c8c',
+                  textTransform: 'uppercase'
+                }}
+              >
+                Periodo
+              </p>
+              <p style={{ margin: '6px 0 0', fontWeight: 600 }}>
+                {inicio.format('DD/MM/YYYY')} - {fin.format('DD/MM/YYYY')}
+              </p>
+            </div>
+          </div>
+          {vacante.pdfInformativoNombre && (
+            <div
+              style={{
+                marginTop: 24,
+                padding: '12px 16px',
+                borderRadius: 12,
+                border: '1px solid #d6e4ff',
+                backgroundColor: '#f0f5ff'
+              }}
+            >
+              <strong>Material adicional:</strong>{' '}
+              <a
+                href={`/api/vacantes/${vacante.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Descargar {vacante.pdfInformativoNombre}
+              </a>
+            </div>
+          )}
+        </section>
+
+        <section
+          style={{
+            ...CARD_STYLE,
+            padding: 32
+          }}
         >
-          <Input />
-        </Form.Item>
-        <Form.Item label="Cedula" name="cedula" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item
-          label="Correo electronico"
-          name="email"
-          rules={[{ required: true, type: 'email' }]}
-        >
-          <Input />
-        </Form.Item>
-        <Form.Item
-          label="Telefono"
-          name="telefono"
-          rules={[{ required: true }]}
-        >
-          <Input />
-        </Form.Item>
-        <Form.Item
-          name="esDominicano"
-          valuePropName="checked"
-          rules={[
-            {
-              validator: (_rule, value) =>
-                value
-                  ? Promise.resolve()
-                  : Promise.reject(
-                      new Error('Debes confirmar que eres dominicano')
-                    )
-            }
-          ]}
-        >
-          <Checkbox>Soy dominicano</Checkbox>
-        </Form.Item>
-        <Form.Item
-          name="noJubilado"
-          valuePropName="checked"
-          rules={[
-            {
-              validator: (_rule, value) =>
-                value
-                  ? Promise.resolve()
-                  : Promise.reject(
+          <h2 style={{ marginTop: 0, marginBottom: 8 }}>Formulario</h2>
+          <p style={{ marginTop: 0, color: '#4a4a4a' }}>
+            Los campos marcados son obligatorios para validar tu postulacion.
+          </p>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleFinish}
+            style={{ marginTop: 16 }}
+          >
+            <Form.Item name="website" style={{ display: 'none' }}>
+              <Input tabIndex={-1} autoComplete="off" />
+            </Form.Item>
+
+            <div style={GRID_STYLES}>
+              <Form.Item
+                label="Nombres"
+                name="nombres"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Apellidos"
+                name="apellidos"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+            </div>
+
+            <div style={GRID_STYLES}>
+              <Form.Item
+                label="Cedula"
+                name="cedula"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Correo electronico"
+                name="email"
+                rules={[{ required: true, type: 'email' }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Telefono"
+                name="telefono"
+                rules={[{ required: true }]}
+              >
+                <Input />
+              </Form.Item>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 12,
+                marginTop: 8
+              }}
+            >
+              <Form.Item
+                name="esDominicano"
+                valuePropName="checked"
+                rules={[
+                  {
+                    validator: (_rule, value) =>
+                      value
+                        ? Promise.resolve()
+                        : Promise.reject(
+                            new Error('Debes confirmar que eres dominicano')
+                          )
+                  }
+                ]}
+              >
+                <Checkbox>Soy dominicano</Checkbox>
+              </Form.Item>
+              <Form.Item
+                name="noJubilado"
+                valuePropName="checked"
+                rules={[
+                  {
+                    validator: (_rule, value) =>
+                      value
+                        ? Promise.resolve()
+                        : Promise.reject(
+                            new Error(
+                              'Debes confirmar que no eres jubilado/pensionado'
+                            )
+                          )
+                  }
+                ]}
+              >
+                <Checkbox>No soy jubilado ni pensionado del Estado</Checkbox>
+              </Form.Item>
+              <Form.Item
+                name="aceptoTerminos"
+                valuePropName="checked"
+                rules={[
+                  {
+                    validator: (_rule, value) =>
+                      value
+                        ? Promise.resolve()
+                        : Promise.reject(
+                            new Error('Debes aceptar los terminos')
+                          )
+                  }
+                ]}
+              >
+                <Checkbox>
+                  Acepto los terminos y condiciones del proceso
+                </Checkbox>
+              </Form.Item>
+            </div>
+
+            <Form.Item
+              label="Verificacion anti-robot"
+              name="humanCheck"
+              rules={[
+                {
+                  validator: (_rule, value) => {
+                    if (
+                      typeof value === 'string' &&
+                      value.trim().toUpperCase() === HUMAN_CONFIRMATION_TEXT
+                    ) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(
                       new Error(
-                        'Debes confirmar que no eres jubilado/pensionado'
+                        `Escribe exactamente "${HUMAN_CONFIRMATION_TEXT}" para continuar`
                       )
-                    )
-            }
-          ]}
-        >
-          <Checkbox>No soy jubilado ni pensionado del Estado</Checkbox>
-        </Form.Item>
-        <Form.Item
-          name="aceptoTerminos"
-          valuePropName="checked"
-          rules={[
-            {
-              validator: (_rule, value) =>
-                value
-                  ? Promise.resolve()
-                  : Promise.reject(new Error('Debes aceptar los terminos'))
-            }
-          ]}
-        >
-          <Checkbox>Acepto los terminos y condiciones del proceso</Checkbox>
-        </Form.Item>
-
-        <Form.Item
-          label="Verificacion anti-robot"
-          name="humanCheck"
-          rules={[
-            {
-              validator: (_rule, value) => {
-                if (
-                  typeof value === 'string' &&
-                  value.trim().toUpperCase() === HUMAN_CONFIRMATION_TEXT
-                ) {
-                  return Promise.resolve();
+                    );
+                  }
                 }
-                return Promise.reject(
-                  new Error(
-                    `Escribe exactamente "${HUMAN_CONFIRMATION_TEXT}" para continuar`
-                  )
-                );
-              }
-            }
-          ]}
-          extra={`Escribe la frase "${HUMAN_CONFIRMATION_TEXT}" para confirmar que eres una persona.`}
-        >
-          <Input
-            placeholder={`Escribe: ${HUMAN_CONFIRMATION_TEXT}`}
-            autoComplete="off"
-          />
-        </Form.Item>
+              ]}
+              extra={`Escribe la frase "${HUMAN_CONFIRMATION_TEXT}" para confirmar que eres una persona.`}
+              style={{ marginTop: 16 }}
+            >
+              <Input
+                placeholder={`Escribe: ${HUMAN_CONFIRMATION_TEXT}`}
+                autoComplete="off"
+              />
+            </Form.Item>
 
-        <h3>Documentos</h3>
-        {vacante.documentosRequeridos
-          .sort((a, b) => a.orden - b.orden)
-          .map((doc) => renderDocumentoCampos(doc))}
+            <div style={{ marginTop: 32 }}>
+              <h3 style={{ marginBottom: 16 }}>Documentos requeridos</h3>
+              {vacante.documentosRequeridos
+                .sort((a, b) => a.orden - b.orden)
+                .map((doc) => renderDocumentoCampos(doc))}
+            </div>
 
-        <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={submitting}
-            disabled={submitting}
-          >
-            Enviar postulacion
-          </Button>
-        </Form.Item>
-      </Form>
+            <Form.Item style={{ textAlign: 'center', marginTop: 24 }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={submitting}
+                disabled={submitting}
+                style={{
+                  minWidth: 220,
+                  height: 44,
+                  fontSize: 16,
+                  fontWeight: 600
+                }}
+              >
+                Enviar postulacion
+              </Button>
+            </Form.Item>
+          </Form>
+        </section>
+      </div>
     </main>
   );
 }
