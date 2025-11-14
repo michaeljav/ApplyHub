@@ -56,6 +56,8 @@ type ArchivoPendiente = {
   fechaFin?: Date | null;
 };
 
+const HUMAN_CONFIRMATION_TEXT = 'SOY HUMANO';
+
 export async function POST(req: Request) {
   try {
     const form = await req.formData();
@@ -69,9 +71,22 @@ export async function POST(req: Request) {
     const esDominicano = form.get('esDominicano') === 'true';
     const noJubilado = form.get('noJubilado') === 'true';
     const aceptoTerminos = form.get('aceptoTerminos') === 'true';
+    const humanCheck = String(form.get('humanCheck') || '');
+    const honeypot = String(form.get('website') || '');
 
     if (!vacanteId || !nombres || !apellidos || !cedula || !email || !telefono) {
       return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 });
+    }
+
+    if (honeypot.trim().length > 0) {
+      return NextResponse.json({ error: 'Solicitud invalida' }, { status: 400 });
+    }
+
+    if (humanCheck.trim().toUpperCase() !== HUMAN_CONFIRMATION_TEXT) {
+      return NextResponse.json(
+        { error: 'Confirma que eres una persona escribiendo la frase indicada.' },
+        { status: 400 }
+      );
     }
 
     const vacante = await prisma.vacante.findUnique({

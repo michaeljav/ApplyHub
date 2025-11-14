@@ -97,7 +97,9 @@ const GRID_STYLES = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))'
 } as const;
 
-const SINGLE_APPLICATION_WARNING = 'Solo puedes aplicar a una vacante.';
+const SINGLE_APPLICATION_WARNING =
+  'Solo puedes aplicar a una vacante a la vez. Completa tu proceso actual antes de iniciar uno nuevo.';
+const HUMAN_CONFIRMATION_TEXT = 'SOY HUMANO';
 
 export default function AplicarPage({ params }: { params: { id: string } }) {
   const [form] = Form.useForm();
@@ -128,6 +130,14 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
       formData.append(
         'aceptoTerminos',
         values.aceptoTerminos ? 'true' : 'false'
+      );
+      formData.append(
+        'humanCheck',
+        values.humanCheck ? String(values.humanCheck).trim() : ''
+      );
+      formData.append(
+        'website',
+        values.website ? String(values.website).trim() : ''
       );
 
       const extractFile = (lista?: UploadFile[]) =>
@@ -626,6 +636,9 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
         </p>
       )}
       <Form form={form} layout="vertical" onFinish={handleFinish}>
+        <Form.Item name="website" style={{ display: 'none' }}>
+          <Input tabIndex={-1} autoComplete="off" />
+        </Form.Item>
         <Form.Item label="Nombres" name="nombres" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
@@ -700,6 +713,34 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
           ]}
         >
           <Checkbox>Acepto los terminos y condiciones del proceso</Checkbox>
+        </Form.Item>
+
+        <Form.Item
+          label="Verificacion anti-robot"
+          name="humanCheck"
+          rules={[
+            {
+              validator: (_rule, value) => {
+                if (
+                  typeof value === 'string' &&
+                  value.trim().toUpperCase() === HUMAN_CONFIRMATION_TEXT
+                ) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(
+                  new Error(
+                    `Escribe exactamente "${HUMAN_CONFIRMATION_TEXT}" para continuar`
+                  )
+                );
+              }
+            }
+          ]}
+          extra={`Escribe la frase "${HUMAN_CONFIRMATION_TEXT}" para confirmar que eres una persona.`}
+        >
+          <Input
+            placeholder={`Escribe: ${HUMAN_CONFIRMATION_TEXT}`}
+            autoComplete="off"
+          />
         </Form.Item>
 
         <h3>Documentos</h3>
