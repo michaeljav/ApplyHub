@@ -187,11 +187,11 @@ export default function VacanteForm({
   const fillFormWithVacante = useCallback(
     (source: VacanteDetalle) => {
       const docs =
-        (source.documentosRequeridos
-          ? [...source.documentosRequeridos].sort((a, b) => a.orden - b.orden)
-          : []
-        ).map((doc, index) =>
-          normalizeDocForForm(
+    (source.documentosRequeridos
+      ? [...source.documentosRequeridos].sort((a, b) => a.orden - b.orden)
+      : []
+    ).map((doc, index) =>
+      normalizeDocForForm(
             {
               nombre: doc.nombre,
               descripcion: doc.descripcion ?? undefined,
@@ -204,6 +204,7 @@ export default function VacanteForm({
         );
 
       form.setFieldsValue({
+        codigo: source.id,
         titulo: source.titulo,
         requisitos: source.requisitos,
         beneficios: source.beneficios,
@@ -231,6 +232,7 @@ export default function VacanteForm({
     } else {
       form.resetFields();
       form.setFieldsValue({
+        codigo: undefined,
         documentos: buildDefaultDocs()
       });
       setDuplicateMode(false);
@@ -385,6 +387,12 @@ export default function VacanteForm({
           onFinish={handleSubmit}
           initialValues={{ documentos: initialDocs }}
         >
+          {(isEditMode || isPrefillMode) && (
+            <Form.Item label="Código interno" name="codigo">
+              <Input disabled />
+            </Form.Item>
+          )}
+
           <Form.Item
             label="Título"
             name="titulo"
