@@ -72,6 +72,18 @@ export default async function VacantePage({
       <p>
         Publicacion: {inicio.format('DD/MM/YYYY')} - {fin.format('DD/MM/YYYY')}
       </p>
+      {vacante.pdfInformativoNombre && (
+        <p>
+          Material adicional:{' '}
+          <a
+            href={`/api/vacantes/${vacante.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Descargar {vacante.pdfInformativoNombre}
+          </a>
+        </p>
+      )}
       {!vacante.activa && (
         <p style={{ color: 'red' }}>
           Esta vacante se encuentra inactiva y no recibe nuevas postulaciones.

@@ -29,6 +29,9 @@ model Vacante {
   fechaFin             DateTime
   limitePostulantes    Int?
   activa               Boolean              @default(true)
+  pdfInformativoNombre String?
+  pdfInformativoArchivo String?
+  pdfInformativoRuta   String?
   documentosRequeridos VacanteDocumento[]
   postulaciones        Postulacion[]
   createdAt            DateTime             @default(now())

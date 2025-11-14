@@ -49,6 +49,8 @@ interface VacanteDocumento {
 interface VacanteDetalle {
   id: number;
   titulo: string;
+  pdfInformativoNombre: string | null;
+  pdfInformativoArchivo: string | null;
   documentosRequeridos: VacanteDocumento[];
 }
 
@@ -582,6 +584,18 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
   return (
     <main style={{ padding: 24, maxWidth: 700 }}>
       <h1>Aplicar a: {vacante.titulo}</h1>
+      {vacante.pdfInformativoNombre && (
+        <p style={{ marginBottom: 16 }}>
+          Material adicional:{' '}
+          <a
+            href={`/api/vacantes/${vacante.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Descargar {vacante.pdfInformativoNombre}
+          </a>
+        </p>
+      )}
       <Form form={form} layout="vertical" onFinish={onFinish}>
         <Form.Item label="Nombres" name="nombres" rules={[{ required: true }]}>
           <Input />

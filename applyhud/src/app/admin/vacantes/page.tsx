@@ -24,6 +24,8 @@ interface Vacante {
   fechaFin: string;
   limitePostulantes: number | null;
   activa: boolean;
+  pdfInformativoNombre: string | null;
+  pdfInformativoArchivo: string | null;
   _count: { postulaciones: number };
 }
 
@@ -37,6 +39,7 @@ type DocumentoTipo =
 interface VacanteDetalleAdmin extends Vacante {
   requisitos: string;
   beneficios: string;
+  pdfInformativoRuta?: string | null;
   documentosRequeridos: Array<{
     id: number;
     nombre: string;

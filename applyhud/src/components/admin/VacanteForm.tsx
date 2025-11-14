@@ -11,12 +11,19 @@ import {
   Space,
   Switch,
   Divider,
-  Select
+  Select,
+  Upload,
+  Checkbox
 } from 'antd';
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  MinusCircleOutlined,
+  PlusOutlined,
+  UploadOutlined
+} from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { UploadFile } from 'antd/es/upload/interface';
 
 type DocumentoTipo =
   | 'CEDULA'
@@ -50,6 +57,8 @@ type VacanteDetalle = {
   fechaInicio: string;
   fechaFin: string;
   limitePostulantes: number | null;
+  pdfInformativoNombre: string | null;
+  pdfInformativoArchivo: string | null;
   documentosRequeridos: VacanteDocumentoData[];
 };
 
@@ -123,6 +132,13 @@ const nombreAutomatico = (doc: DocumentoFormValue): string => {
   }
 };
 
+const normalizeUpload = (e: any) => {
+  if (Array.isArray(e)) {
+    return e;
+  }
+  return e?.fileList ?? [];
+};
+
 type FormValues = {
   titulo: string;
   requisitos: string;
@@ -130,6 +146,8 @@ type FormValues = {
   periodo: [Dayjs, Dayjs];
   limitePostulantes?: number;
   documentos?: DocumentoFormValue[];
+  pdfInformativo?: UploadFile[];
+  eliminarPdfInformativo?: boolean;
 };
 
 type SavePayload = {
@@ -183,6 +201,13 @@ export default function VacanteForm({
     : isEditMode
     ? 'Guardar cambios'
     : 'Crear vacante';
+  const pdfUploads = Form.useWatch('pdfInformativo', form);
+
+  useEffect(() => {
+    if (pdfUploads && Array.isArray(pdfUploads) && pdfUploads.length > 0) {
+      form.setFieldsValue({ eliminarPdfInformativo: false });
+    }
+  }, [pdfUploads, form]);
 
   const fillFormWithVacante = useCallback(
     (source: VacanteDetalle) => {
@@ -210,7 +235,9 @@ export default function VacanteForm({
         beneficios: source.beneficios,
         periodo: [dayjs(source.fechaInicio), dayjs(source.fechaFin)],
         limitePostulantes: source.limitePostulantes ?? undefined,
-        documentos: docs.length ? docs : buildDefaultDocs()
+        documentos: docs.length ? docs : buildDefaultDocs(),
+        pdfInformativo: [],
+        eliminarPdfInformativo: false
       });
     },
     [form]
@@ -258,17 +285,21 @@ export default function VacanteForm({
   };
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: SavePayload) => {
+    mutationFn: async (payload: SavePayload | FormData) => {
       const url = isEditMode
         ? `/api/vacantes/admin/${vacante?.id}`
         : '/api/vacantes/admin';
       const method = isEditMode ? 'PATCH' : 'POST';
       const res = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+        headers:
+          payload instanceof FormData
+            ? undefined
+            : {
+                'Content-Type': 'application/json'
+              },
+        body:
+          payload instanceof FormData ? payload : JSON.stringify(payload)
       });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
@@ -336,7 +367,26 @@ export default function VacanteForm({
       documentosRequeridos: documentos
     };
 
-    saveMutation.mutate(payload);
+    const pdfFile = values.pdfInformativo?.[0]?.originFileObj as
+      | File
+      | undefined;
+    const removePdf =
+      Boolean(values.eliminarPdfInformativo) && Boolean(isEditMode);
+
+    if (pdfFile) {
+      form.setFieldsValue({ eliminarPdfInformativo: false });
+    }
+
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(payload));
+    if (pdfFile) {
+      formData.append('pdfInformativo', pdfFile);
+    }
+    if (removePdf) {
+      formData.append('removePdfInformativo', 'true');
+    }
+
+    saveMutation.mutate(formData);
   };
 
   const renderNombreField = (fieldIndex: number) => (
@@ -381,12 +431,12 @@ export default function VacanteForm({
     <>
       {contextHolder}
       <Card title={cardTitle} style={{ marginTop: 24 }}>
-        <Form<FormValues>
-          layout="vertical"
-          form={form}
-          onFinish={handleSubmit}
-          initialValues={{ documentos: initialDocs }}
-        >
+          <Form<FormValues>
+            layout="vertical"
+            form={form}
+            onFinish={handleSubmit}
+            initialValues={{ documentos: initialDocs, pdfInformativo: [], eliminarPdfInformativo: false }}
+          >
           {(isEditMode || isPrefillMode) && (
             <Form.Item label="Código interno" name="codigo">
               <Input disabled />
@@ -443,6 +493,40 @@ export default function VacanteForm({
               style={{ width: '100%' }}
               placeholder="Ej. 100"
             />
+          </Form.Item>
+
+          <Divider>Material adicional</Divider>
+          {isEditMode && vacante?.pdfInformativoNombre && (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ marginBottom: 8 }}>
+                PDF actual:{' '}
+                <a
+                  href={`/api/vacantes/${vacante.id}/pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {vacante.pdfInformativoNombre}
+                </a>
+              </p>
+              <Form.Item
+                name="eliminarPdfInformativo"
+                valuePropName="checked"
+                style={{ marginBottom: 0 }}
+              >
+                <Checkbox>Eliminar PDF informativo actual</Checkbox>
+              </Form.Item>
+            </div>
+          )}
+          <Form.Item
+            label="Adjuntar PDF (opcional)"
+            name="pdfInformativo"
+            valuePropName="fileList"
+            getValueFromEvent={normalizeUpload}
+            extra="Este archivo estará disponible para que los postulantes lo descarguen."
+          >
+            <Upload beforeUpload={() => false} maxCount={1} accept=".pdf">
+              <Button icon={<UploadOutlined />}>Seleccionar PDF</Button>
+            </Upload>
           </Form.Item>
 
           <Divider>Documentos requeridos</Divider>
@@ -564,3 +648,5 @@ export default function VacanteForm({
     </>
   );
 }
+
+
