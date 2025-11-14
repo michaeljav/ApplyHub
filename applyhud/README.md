@@ -54,6 +54,7 @@ Si quieres poner el proyecto a funcionar rápido:
 
 6. Crea un usuario ADMIN en la BD (con password **HASH** bcrypt).  
     Ejemplo SQL:
+   password: `Admin123*`
 
    ```sql
    INSERT INTO "Usuario" ("nombre", "email", "password", "rol", "activo", "createdAt", "updatedAt")
