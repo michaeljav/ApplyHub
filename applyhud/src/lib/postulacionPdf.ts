@@ -6,6 +6,8 @@ export type ArchivoResumen = {
 };
 
 export type PostulacionResumen = {
+  id: number;
+  vacanteId: number;
   nombres: string;
   apellidos: string;
   cedula: string;
@@ -39,15 +41,67 @@ export async function generarPdfPostulacion(
     }
   };
 
+  const dividirEnLineas = (texto = '') => {
+    const maxAncho = pagina.getWidth() - margen * 2;
+    if (!texto) return [''];
+
+    const palabras = texto.split(' ');
+    const lineas: string[] = [];
+    let actual = '';
+
+    const empujarLinea = (linea: string) => {
+      if (linea) {
+        lineas.push(linea);
+      }
+    };
+
+    const truncarPalabraLarga = (palabra: string) => {
+      let segmento = '';
+      for (const char of palabra) {
+        const prueba = segmento + char;
+        if (fuente.widthOfTextAtSize(prueba, 12) <= maxAncho) {
+          segmento = prueba;
+        } else {
+          if (segmento) empujarLinea(segmento);
+          segmento = char;
+        }
+      }
+      return segmento;
+    };
+
+    for (const palabra of palabras) {
+      const candidato = actual ? `${actual} ${palabra}` : palabra;
+      if (fuente.widthOfTextAtSize(candidato, 12) <= maxAncho) {
+        actual = candidato;
+      } else {
+        if (actual) empujarLinea(actual);
+        if (fuente.widthOfTextAtSize(palabra, 12) <= maxAncho) {
+          actual = palabra;
+        } else {
+          actual = truncarPalabraLarga(palabra);
+        }
+      }
+    }
+
+    if (actual) {
+      lineas.push(actual);
+    }
+
+    return lineas.length ? lineas : [''];
+  };
+
   const escribir = (texto = '') => {
-    asegurarEspacio();
-    pagina.drawText(texto, {
-      x: margen,
-      y: cursorY,
-      size: 12,
-      font: fuente
+    const lineas = dividirEnLineas(texto);
+    asegurarEspacio(lineas.length);
+    lineas.forEach((linea) => {
+      pagina.drawText(linea, {
+        x: margen,
+        y: cursorY,
+        size: 12,
+        font: fuente
+      });
+      cursorY -= altoLinea;
     });
-    cursorY -= altoLinea;
   };
 
   pagina.setFont(fuente);
@@ -56,7 +110,9 @@ export async function generarPdfPostulacion(
   cursorY -= altoLinea * 1.5;
 
   pagina.setFontSize(12);
+  escribir(`Codigo vacante: ${postulacion.vacanteId}`);
   escribir(`Vacante: ${tituloVacante}`);
+  escribir(`Codigo postulacion: ${postulacion.id}`);
   escribir(`Nombre: ${postulacion.nombres} ${postulacion.apellidos}`);
   escribir(`Cédula: ${postulacion.cedula}`);
   escribir(`Correo: ${postulacion.email}`);
