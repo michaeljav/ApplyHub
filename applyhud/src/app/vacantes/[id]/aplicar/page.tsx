@@ -501,7 +501,7 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
                 />
               </Form.Item>
               <Form.Item
-                label="Estado"
+                label="Graduado"
                 name={[baseName, 'graduado']}
                 rules={stringRules(
                   'Indica si estas graduado',

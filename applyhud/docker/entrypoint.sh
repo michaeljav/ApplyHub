@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-if [ -f .env ]; then
+if [ -z "${DATABASE_URL:-}" ] && [ -f .env ]; then
   set -a
   # shellcheck source=/dev/null
   . ./.env
@@ -9,7 +9,7 @@ if [ -f .env ]; then
 fi
 
 if [ -z "${DATABASE_URL:-}" ]; then
-  echo "DATABASE_URL no está definido. Revisa tu archivo .env." >&2
+  echo "DATABASE_URL no está definido. Revisa tu archivo .env o variables de entorno." >&2
   exit 1
 fi
 

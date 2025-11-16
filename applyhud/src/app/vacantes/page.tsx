@@ -3,6 +3,7 @@ import VacantesTable, {
 } from '@/components/vacantes/VacantesTable';
 import AdminAccessIcon from '@/components/vacantes/AdminAccessIcon';
 import { prisma } from '@/lib/prisma';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -18,6 +19,7 @@ async function getVacantes(): Promise<VacanteWithCount[]> {
 }
 
 export default async function VacantesPage() {
+  noStore();
   const vacantes = await getVacantes();
 
   return (
