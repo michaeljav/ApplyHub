@@ -87,20 +87,23 @@ Si quieres poner el proyecto a funcionar rápido:
 ## 🧰 Modos de ejecución
 
 ### 1. Todo en Docker
+
 - Ejecuta `docker compose up --build -d` (ver `rapido-subida.md`) para levantar **Next + Postgres** dentro de contenedores.
 - La app se conecta automáticamente al Postgres interno gracias a las variables declaradas en `docker-compose.yml`.
 
 ### 2. Next.js local contra Postgres del Docker
+
 1. Levanta solo la base del `docker-compose`:
    ```bash
    docker compose up -d postgres
    ```
 2. Verifica que expone el puerto `5432` hacia el host.
-3. Corre `npm run dev` normalmente.  
+3. Corre `npm run dev` normalmente.
    - El `.env` apunta a `postgresql://...@localhost:5432/...`, por lo que Prisma/Next se conectan al contenedor.
    - Puedes seguir usando `npm run prisma:*` sin cambios.
 
 ### 3. Todo local (sin Docker)
+
 - Usa tu instalación local de Postgres en `localhost:5432`.
 - Actualiza credenciales en `.env` si son distintas.
 - Corre `npm run dev` o cualquier script como siempre.
@@ -358,3 +361,24 @@ SOLUCION 0. solucion correcta. cerrar cmds
    npm install
 2. Regenera cliente
    npx prisma generate
+
+# 12 ✅ Comando único para limpiar TODO en Docker
+
+docker system prune -a --volumes --force
+
+✔️ ¿Qué elimina este comando?
+
+❌ Todos los contenedores detenidos
+
+❌ Todas las imágenes no usadas
+(con -a elimina todas, usadas o no)
+
+❌ Todos los volúmenes no usados
+
+❌ Todo el build cache
+
+❌ Todas las networks no usadas
+
+⚠️ Advertencia importante
+
+Esto te deja Docker completamente limpio, como recién instalado.
