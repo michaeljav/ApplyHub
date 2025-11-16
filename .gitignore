@@ -29,11 +29,11 @@ FILE_TO_DELETE
 # ===============================
 # Prisma
 # ===============================
-prisma/dev.db
-prisma/dev.db-journal
-prisma/*.sqlite
-prisma/*.db
-prisma/migrations/
+# prisma/dev.db
+# prisma/dev.db-journal
+# prisma/*.sqlite
+# prisma/*.db
+# prisma/migrations/
 
 # ===============================
 # Uploads (documentos de postulantes)
