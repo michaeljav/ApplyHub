@@ -3,12 +3,21 @@ import dayjs from 'dayjs';
 import { getBaseUrl } from '@/lib/baseUrl';
 import ApplyWarningLink from '@/components/vacantes/ApplyWarningLink';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type DocumentoMeta = {
   texto?: string;
   tipoDocumento?: string;
   caraCedula?: string | null;
   tituloNivel?: string | null;
   certificacion?: {
+    institucion?: string;
+    cargo?: string;
+    fechaInicio?: string | null;
+    fechaFin?: string | null;
+  } | null;
+  certificadoLaboral?: {
     institucion?: string;
     cargo?: string;
     fechaInicio?: string | null;

@@ -51,6 +51,8 @@ interface VacanteDocumento {
 interface VacanteDetalle {
   id: number;
   titulo: string;
+  fechaInicio: string;
+  fechaFin: string;
   pdfInformativoNombre: string | null;
   pdfInformativoArchivo: string | null;
   documentosRequeridos: VacanteDocumento[];

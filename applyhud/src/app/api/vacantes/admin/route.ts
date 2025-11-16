@@ -9,9 +9,11 @@ const vacanteInclude = {
   documentosRequeridos: true
 };
 
+type UploadedFile = Blob & { name?: string };
+
 type ParsedRequest = {
   payload: any;
-  pdfFile: Blob | null;
+  pdfFile: UploadedFile | null;
 };
 
 async function parseVacanteRequest(request: Request): Promise<ParsedRequest> {
@@ -31,7 +33,7 @@ async function parseVacanteRequest(request: Request): Promise<ParsedRequest> {
     const pdfEntry = form.get('pdfInformativo');
     const pdfFile =
       pdfEntry && typeof Blob !== 'undefined' && pdfEntry instanceof Blob && pdfEntry.size > 0
-        ? (pdfEntry as Blob)
+        ? (pdfEntry as UploadedFile)
         : null;
     return { payload, pdfFile };
   }
@@ -121,7 +123,7 @@ export async function POST(request: Request) {
       vacante = await prisma.vacante.update({
         where: { id: vacante.id },
         data: {
-          pdfInformativoNombre: pdfFile.name ?? 'material.pdf',
+          pdfInformativoNombre: pdfFile?.name ?? 'material.pdf',
           pdfInformativoArchivo: nombreFinal,
           pdfInformativoRuta: ruta
         },

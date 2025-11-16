@@ -4,6 +4,9 @@ import VacantesTable, {
 import AdminAccessIcon from '@/components/vacantes/AdminAccessIcon';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getVacantes(): Promise<VacanteWithCount[]> {
   return prisma.vacante.findMany({
     include: {

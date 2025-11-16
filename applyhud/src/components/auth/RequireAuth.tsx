@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, Suspense, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Spin } from 'antd';
@@ -10,7 +10,22 @@ interface RequireAuthProps {
   roles?: Array<'ADMIN' | 'RRHH'>;
 }
 
-export default function RequireAuth({ children, roles }: RequireAuthProps) {
+function LoadingView({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        minHeight: '50vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      <Spin tip={message} />
+    </div>
+  );
+}
+
+function RequireAuthInner({ children, roles }: RequireAuthProps) {
   const { status, data } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -38,19 +53,16 @@ export default function RequireAuth({ children, roles }: RequireAuthProps) {
   }, [status, hasAllowedRole, pathname, searchParams, router]);
 
   if (status === 'loading' || status === 'unauthenticated' || !hasAllowedRole) {
-    return (
-      <div
-        style={{
-          minHeight: '50vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <Spin tip="Verificando acceso..." />
-      </div>
-    );
+    return <LoadingView message="Verificando acceso..." />;
   }
 
   return <>{children}</>;
+}
+
+export default function RequireAuth(props: RequireAuthProps) {
+  return (
+    <Suspense fallback={<LoadingView message="Preparando sesión..." />}>
+      <RequireAuthInner {...props} />
+    </Suspense>
+  );
 }

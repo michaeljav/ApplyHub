@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import type { MouseEvent } from 'react';
 import type { Vacante } from '@prisma/client';
+import type { ColumnsType } from 'antd/es/table';
+import type { Breakpoint } from 'antd/es/_util/responsiveObserver';
 
 export type VacanteWithCount = Vacante & {
   _count: { postulaciones: number };
@@ -14,7 +16,7 @@ export type VacanteWithCount = Vacante & {
 
 type CountdownInfo = { text: string; color: string };
 
-function tiempoRestante(fechaFin: string): CountdownInfo {
+function tiempoRestante(fechaFin: string | Date): CountdownInfo {
   const fin = dayjs(fechaFin);
   const ahora = dayjs();
   const diffMin = fin.diff(ahora, 'minute');
@@ -66,13 +68,13 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
     [router]
   );
 
-  const columns = [
+  const columns: ColumnsType<VacanteWithCount> = [
     {
       title: 'Código',
       dataIndex: 'id',
       key: 'codigo',
       width: 90,
-      responsive: ['sm']
+      responsive: ['sm'] as Breakpoint[]
     },
     {
       title: 'Vacante',
@@ -91,15 +93,15 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
       title: 'Inicio',
       dataIndex: 'fechaInicio',
       key: 'fechaInicio',
-      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
-      responsive: ['sm']
+      render: (value: string | Date) => dayjs(value).format('DD/MM/YYYY'),
+      responsive: ['sm'] as Breakpoint[]
     },
     {
       title: 'Fin',
       dataIndex: 'fechaFin',
       key: 'fechaFin',
-      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
-      responsive: ['sm']
+      render: (value: string | Date) => dayjs(value).format('DD/MM/YYYY'),
+      responsive: ['sm'] as Breakpoint[]
     },
     {
       title: 'Cierre',
@@ -108,13 +110,13 @@ export default function VacantesTable({ data = [] }: VacantesTableProps) {
         const countdown = tiempoRestante(record.fechaFin);
         return <Tag color={countdown.color}>{countdown.text}</Tag>;
       },
-      responsive: ['sm']
+      responsive: ['sm'] as Breakpoint[]
     },
     {
       title: 'Postulantes',
       key: 'postulantes',
       render: (_: any, record: VacanteWithCount) => record._count.postulaciones,
-      responsive: ['md']
+      responsive: ['md'] as Breakpoint[]
     },
     {
       title: 'Estado',

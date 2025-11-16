@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+uploads
+uploads_para borrar
+npm-debug.log*
+logs
+*.log
+.git
+.gitignore

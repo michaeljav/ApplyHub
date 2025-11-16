@@ -140,6 +140,7 @@ const normalizeUpload = (e: any) => {
 };
 
 type FormValues = {
+  codigo?: number;
   titulo: string;
   requisitos: string;
   beneficios: string;
@@ -550,7 +551,7 @@ export default function VacanteForm({
                     <Form.Item
                       label="Tipo de documento"
                       name={[field.name, 'tipoDocumento']}
-                      fieldKey={[field.fieldKey, 'tipoDocumento']}
+                      fieldKey={[field.fieldKey ?? field.key, 'tipoDocumento']}
                       rules={[
                         {
                           required: true,
@@ -569,7 +570,7 @@ export default function VacanteForm({
                     <Form.Item
                       label="Obligatorio"
                       name={[field.name, 'obligatorio']}
-                      fieldKey={[field.fieldKey, 'obligatorio']}
+                      fieldKey={[field.fieldKey ?? field.key, 'obligatorio']}
                       valuePropName="checked"
                     >
                       <Switch />
@@ -585,7 +586,7 @@ export default function VacanteForm({
                         </Space>
                       }
                       name={[field.name, 'defaultTemplate']}
-                      fieldKey={[field.fieldKey, 'defaultTemplate']}
+                      fieldKey={[field.fieldKey ?? field.key, 'defaultTemplate']}
                       valuePropName="checked"
                     >
                       <Switch />

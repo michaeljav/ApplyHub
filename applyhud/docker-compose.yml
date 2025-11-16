@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: my_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: adminuser
+      POSTGRES_PASSWORD: adminpassword123
+      POSTGRES_DB: appyhub_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U adminuser -d appyhub_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    container_name: applyhud_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://adminuser:adminpassword123@postgres:5432/appyhub_db
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - '3000:3000'
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  postgres_data:
+  uploads_data:

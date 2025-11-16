@@ -18,9 +18,11 @@ const parseId = (value: string) => {
   return Number.isNaN(id) ? null : id;
 };
 
+type UploadedFile = Blob & { name?: string };
+
 type ParsedRequest = {
   payload: any;
-  pdfFile: Blob | null;
+  pdfFile: UploadedFile | null;
   removePdf: boolean;
 };
 
@@ -41,7 +43,7 @@ async function parseVacanteRequest(request: Request): Promise<ParsedRequest> {
     const pdfEntry = form.get('pdfInformativo');
     const pdfFile =
       pdfEntry && typeof Blob !== 'undefined' && pdfEntry instanceof Blob && pdfEntry.size > 0
-        ? (pdfEntry as Blob)
+        ? (pdfEntry as UploadedFile)
         : null;
     const removePdf = form.get('removePdfInformativo') === 'true';
     return { payload, pdfFile, removePdf };
@@ -182,7 +184,7 @@ export async function PATCH(request: Request, { params }: Params) {
       vacante = await prisma.vacante.update({
         where: { id },
         data: {
-          pdfInformativoNombre: pdfFile.name ?? 'material.pdf',
+          pdfInformativoNombre: pdfFile?.name ?? 'material.pdf',
           pdfInformativoArchivo: nombreFinal,
           pdfInformativoRuta: ruta
         },
