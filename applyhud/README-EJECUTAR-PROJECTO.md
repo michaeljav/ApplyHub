@@ -11,7 +11,7 @@ https://github.com/michaeljav/ApplyHub/tree/main
 docker compose up --build -d
 
 4.abrir aplicacion
-http://localhos:3000/
+http://localhost:3000
 
 Nota:
 codigo si deseas borrar todo y comenzar de nuevo
