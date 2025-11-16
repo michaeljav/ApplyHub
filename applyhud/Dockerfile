@@ -34,8 +34,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/.env ./.env
 COPY --from=builder /app/scripts ./scripts
 COPY docker/entrypoint.sh ./docker-entrypoint.sh
-
-RUN chmod +x ./docker-entrypoint.sh
+# Remove potential Windows carriage returns to ensure the script runs on Linux images
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh \
+    && chmod +x ./docker-entrypoint.sh
 
 EXPOSE 3000
 
