@@ -364,7 +364,7 @@ SOLUCION 0. solucion correcta. cerrar cmds
 
 # 12 ✅ Comando único para limpiar TODO en Docker
 
-docker system prune -a --volumes --force
+docker stop $(docker ps -aq) 2>/dev/null; docker rm -f $(docker ps -aq) 2>/dev/null; docker rmi -f $(docker images -aq) 2>/dev/null; docker volume rm -f $(docker volume ls -q) 2>/dev/null; docker network rm $(docker network ls -q) 2>/dev/null
 
 ✔️ ¿Qué elimina este comando?
 
