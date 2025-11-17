@@ -13,6 +13,11 @@ docker compose up --build -d
 4.abrir aplicacion
 http://localhos:3000/
 
+
+usuario: admin@iad.gob.do
+pass :Admin123*
+
+
 Nota:
 codigo si deseas borrar todo y comenzar de nuevo
 Comando único para limpiar TODO en Docker
