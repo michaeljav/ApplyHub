@@ -18,3 +18,6 @@ cd /c/personal/iad/app/ApplyHub/client_pg_light/pgweb_windows_amd64
 DATABASE_URL="postgresql://adminuser:adminpassword123@localhost:5432/appyhub_db"
 
 C:\personal\iad\app\ApplyHub\client pg light\pgweb_windows_amd64
+
+subir solo un servicio postgres desde docker compose
+docker compose up --build -d postgres
