@@ -38,14 +38,15 @@ model Vacante {
 }
 
 model VacanteDocumento {
-  id             Int            @id @default(autoincrement())
-  vacanteId      Int
-  nombre         String
-  descripcion    String?
-  obligatorio    Boolean  
-  orden          Int
-  tipoDocumento  DocumentoTipo  @default(OTRO)
-  vacante       Vacante @relation(fields: [vacanteId], references: [id])
+  id                 Int            @id @default(autoincrement())
+  vacanteId          Int
+  nombre             String
+  descripcion        String?
+  obligatorio        Boolean
+  multipleDocumento  Boolean        @default(false)
+  orden              Int
+  tipoDocumento      DocumentoTipo  @default(OTRO)
+  vacante           Vacante @relation(fields: [vacanteId], references: [id])
 }
 
 model Postulacion {

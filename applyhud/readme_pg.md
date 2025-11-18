@@ -1,3 +1,4 @@
+pagina web para ver base de datos postgress
 🟦 1. pgweb (Runs in browser – portable)
 
 A single executable you run once and it opens a browser UI.
