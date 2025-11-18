@@ -46,6 +46,7 @@ interface VacanteDocumento {
   obligatorio: boolean;
   orden: number;
   tipoDocumento: DocumentoTipo;
+  multipleDocumento: boolean;
 }
 
 interface VacanteDetalle {
@@ -57,6 +58,13 @@ interface VacanteDetalle {
   pdfInformativoArchivo: string | null;
   documentosRequeridos: VacanteDocumento[];
 }
+
+type DocumentoEntryOptions = {
+  entryName?: string;
+  entryIndex?: number;
+  isExtra?: boolean;
+  onRemove?: () => void;
+};
 
 const normalizeUpload = (e: any) => {
   if (Array.isArray(e)) {
@@ -100,6 +108,14 @@ const GRID_STYLES = {
   gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))'
 } as const;
 
+const MULTIPLE_DOCUMENTO_TIPOS = new Set<DocumentoTipo>([
+  'TITULO',
+  'CERTIFICADO_LABORAL'
+]);
+
+const buildEntryName = (docId: number, extraKey?: string) =>
+  extraKey ? `doc_${docId}__extra_${extraKey}` : `doc_${docId}`;
+
 const SINGLE_APPLICATION_WARNING =
   'Solo puedes aplicar a una vacante a la vez. Completa tu proceso actual antes de iniciar uno nuevo.';
 const HUMAN_CONFIRMATION_TEXT = 'SOY HUMANO';
@@ -115,6 +131,9 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
   const [vacante, setVacante] = useState<VacanteDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [docExtraEntries, setDocExtraEntries] = useState<
+    Record<number, string[]>
+  >({});
   const router = useRouter();
 
   useEffect(() => {
@@ -123,6 +142,50 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
       .then((data) => setVacante(data))
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  useEffect(() => {
+    setDocExtraEntries({});
+    form.resetFields();
+  }, [vacante?.id, form]);
+
+  const canDocumentoHaveMultiples = (doc: VacanteDocumento) =>
+    doc.multipleDocumento && MULTIPLE_DOCUMENTO_TIPOS.has(doc.tipoDocumento);
+
+  const getEntryNamesForDoc = (doc: VacanteDocumento) => {
+    const baseEntry = buildEntryName(doc.id);
+    if (!canDocumentoHaveMultiples(doc)) {
+      return [baseEntry];
+    }
+    const extras = docExtraEntries[doc.id] ?? [];
+    return [baseEntry, ...extras.map((key) => buildEntryName(doc.id, key))];
+  };
+
+  const handleAddDocumentoEntrada = (docId: number) => {
+    setDocExtraEntries((prev) => {
+      const extras = prev[docId] ?? [];
+      const key = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      return {
+        ...prev,
+        [docId]: [...extras, key]
+      };
+    });
+  };
+
+  const handleRemoveDocumentoEntrada = (docId: number, entryKey: string) => {
+    setDocExtraEntries((prev) => {
+      const extras = prev[docId] ?? [];
+      const nextExtras = extras.filter((key) => key !== entryKey);
+      const nextState = { ...prev };
+      if (nextExtras.length) {
+        nextState[docId] = nextExtras;
+      } else {
+        delete nextState[docId];
+      }
+      return nextState;
+    });
+    const entryName = buildEntryName(docId, entryKey);
+    form.resetFields([[entryName]]);
+  };
 
   const submitApplication = async (values: any) => {
     setSubmitting(true);
@@ -182,60 +245,66 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
       };
 
       (vacante?.documentosRequeridos || []).forEach((doc) => {
-        const baseName = `doc_${doc.id}`;
-        const grupo = values[baseName] || {};
-        switch (doc.tipoDocumento) {
-          case 'CEDULA': {
-            appendFile(`${baseName}_frontal`, grupo.frontal);
-            appendFile(`${baseName}_reverso`, grupo.reverso);
-            break;
+        const entryNames = getEntryNamesForDoc(doc);
+        entryNames.forEach((entryName) => {
+          const baseName = entryName;
+          const grupo = values[baseName] || {};
+          switch (doc.tipoDocumento) {
+            case 'CEDULA': {
+              appendFile(`${baseName}_frontal`, grupo.frontal);
+              appendFile(`${baseName}_reverso`, grupo.reverso);
+              break;
+            }
+            case 'CURRICULUM': {
+              appendFile(`${baseName}_archivo`, grupo.archivo);
+              break;
+            }
+            case 'TITULO': {
+              if (grupo.grado) {
+                formData.append(`${baseName}_grado`, String(grupo.grado));
+              }
+              if (grupo.graduado) {
+                formData.append(`${baseName}_graduado`, String(grupo.graduado));
+              }
+              if (grupo.nombre) {
+                formData.append(
+                  `${baseName}_nombre`,
+                  String(grupo.nombre).trim()
+                );
+              }
+              appendFile(`${baseName}_archivo`, grupo.archivo);
+              break;
+            }
+            case 'CERTIFICADO_LABORAL': {
+              if (grupo.institucion) {
+                formData.append(
+                  `${baseName}_institucion`,
+                  String(grupo.institucion).trim()
+                );
+              }
+              if (grupo.cargo) {
+                formData.append(
+                  `${baseName}_cargo`,
+                  String(grupo.cargo).trim()
+                );
+              }
+              const fechaInicio = formatDateValue(grupo.fechaInicio);
+              if (fechaInicio) {
+                formData.append(`${baseName}_fechaInicio`, fechaInicio);
+              }
+              const fechaFin = formatDateValue(grupo.fechaFin);
+              if (fechaFin) {
+                formData.append(`${baseName}_fechaFin`, fechaFin);
+              }
+              appendFile(`${baseName}_archivo`, grupo.archivo);
+              break;
+            }
+            default: {
+              appendFile(`${baseName}_archivo`, grupo.archivo);
+              break;
+            }
           }
-          case 'CURRICULUM': {
-            appendFile(`${baseName}_archivo`, grupo.archivo);
-            break;
-          }
-          case 'TITULO': {
-            if (grupo.grado) {
-              formData.append(`${baseName}_grado`, String(grupo.grado));
-            }
-            if (grupo.graduado) {
-              formData.append(`${baseName}_graduado`, String(grupo.graduado));
-            }
-            if (grupo.nombre) {
-              formData.append(
-                `${baseName}_nombre`,
-                String(grupo.nombre).trim()
-              );
-            }
-            appendFile(`${baseName}_archivo`, grupo.archivo);
-            break;
-          }
-          case 'CERTIFICADO_LABORAL': {
-            if (grupo.institucion) {
-              formData.append(
-                `${baseName}_institucion`,
-                String(grupo.institucion).trim()
-              );
-            }
-            if (grupo.cargo) {
-              formData.append(`${baseName}_cargo`, String(grupo.cargo).trim());
-            }
-            const fechaInicio = formatDateValue(grupo.fechaInicio);
-            if (fechaInicio) {
-              formData.append(`${baseName}_fechaInicio`, fechaInicio);
-            }
-            const fechaFin = formatDateValue(grupo.fechaFin);
-            if (fechaFin) {
-              formData.append(`${baseName}_fechaFin`, fechaFin);
-            }
-            appendFile(`${baseName}_archivo`, grupo.archivo);
-            break;
-          }
-          default: {
-            appendFile(`${baseName}_archivo`, grupo.archivo);
-            break;
-          }
-        }
+        });
       });
 
       const res = await fetch('/api/postulaciones', {
@@ -275,10 +344,15 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
   const inicio = dayjs(vacante.fechaInicio);
   const fin = dayjs(vacante.fechaFin);
 
-  const renderDocumentoCampos = (doc: VacanteDocumento) => {
+  const renderDocumentoCampos = (
+    doc: VacanteDocumento,
+    options?: DocumentoEntryOptions
+  ) => {
     const meta = parseDocumentoMeta(doc.descripcion);
-    const baseName = `doc_${doc.id}`;
-    const requerido = doc.obligatorio;
+    const baseName = options?.entryName ?? buildEntryName(doc.id);
+    const entryNumber = options?.entryIndex ?? 1;
+    const isExtra = options?.isExtra ?? false;
+    const requerido = doc.obligatorio && !isExtra;
     const tipo = doc.tipoDocumento || 'OTRO';
     const detalles: string[] = [];
 
@@ -364,20 +438,42 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
     );
 
     const header = (
-      <div style={{ marginBottom: 8 }}>
-        <strong>
-          {doc.nombre} {requerido ? '(Obligatorio)' : '(Opcional)'}
-        </strong>
-        {(meta.texto || detalles.length > 0) && (
-          <p style={{ margin: '4px 0 0' }}>
-            {meta.texto}
-            {detalles.length > 0 && (
-              <>
-                {meta.texto ? ' - ' : ''}
-                {detalles.join(' | ')}
-              </>
-            )}
-          </p>
+      <div
+        style={{
+          marginBottom: 8,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap'
+        }}
+      >
+        <div>
+          <strong>
+            {doc.nombre}
+            {isExtra ? ` - Adicional ${entryNumber}` : ''}{' '}
+            {requerido ? '(Obligatorio)' : '(Opcional)'}
+          </strong>
+          {(meta.texto || detalles.length > 0) && (
+            <p style={{ margin: '4px 0 0' }}>
+              {meta.texto}
+              {detalles.length > 0 && (
+                <>
+                  {meta.texto ? ' - ' : ''}
+                  {detalles.join(' | ')}
+                </>
+              )}
+            </p>
+          )}
+        </div>
+        {options?.onRemove && (
+          <Button
+            type="link"
+            danger
+            onClick={options.onRemove}
+            style={{ padding: 0 }}
+          >
+            Quitar
+          </Button>
         )}
       </div>
     );
@@ -612,7 +708,7 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
 
     return (
       <section
-        key={doc.id}
+        key={baseName}
         style={{
           ...CARD_STYLE,
           padding: 20,
@@ -907,7 +1003,41 @@ export default function AplicarPage({ params }: { params: { id: string } }) {
               <h3 style={{ marginBottom: 16 }}>Documentos requeridos</h3>
               {vacante.documentosRequeridos
                 .sort((a, b) => a.orden - b.orden)
-                .map((doc) => renderDocumentoCampos(doc))}
+                .map((doc) => {
+                  const entryNames = getEntryNamesForDoc(doc);
+                  const extras = docExtraEntries[doc.id] ?? [];
+                  const canAddMore = canDocumentoHaveMultiples(doc);
+                  return (
+                    <div key={`doc-group-${doc.id}`}>
+                      {entryNames.map((entryName, index) => {
+                        const extraKey =
+                          index > 0 ? extras[index - 1] : undefined;
+                        return renderDocumentoCampos(doc, {
+                          entryName,
+                          entryIndex: index + 1,
+                          isExtra: index > 0,
+                          onRemove:
+                            index > 0 && extraKey
+                              ? () =>
+                                  handleRemoveDocumentoEntrada(doc.id, extraKey)
+                              : undefined
+                        });
+                      })}
+                      {canAddMore && (
+                        <Button
+                          type="dashed"
+                          onClick={() => handleAddDocumentoEntrada(doc.id)}
+                          style={{ marginBottom: 24 }}
+                        >
+                          Agregar otro{' '}
+                          {doc.tipoDocumento === 'TITULO'
+                            ? 'titulo'
+                            : 'certificado'}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
 
             <Form.Item style={{ textAlign: 'center', marginTop: 24 }}>

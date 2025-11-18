@@ -47,6 +47,7 @@ interface VacanteDetalleAdmin extends Vacante {
     obligatorio: boolean;
     orden: number;
     tipoDocumento: DocumentoTipo;
+    multipleDocumento: boolean;
   }>;
 }
 

@@ -142,7 +142,7 @@ export default function PostulacionDetallePage() {
 
     if (archivo.tipoDocumento === 'TITULO') {
       if (archivo.tituloNivel) detalles.push(`Grado: ${archivo.tituloNivel}`);
-      if (archivo.graduado) detalles.push(`Estado: ${archivo.graduado}`);
+      if (archivo.graduado) detalles.push(`Graduado: ${archivo.graduado}`);
     }
 
     if (archivo.tipoDocumento === 'CERTIFICADO_LABORAL') {

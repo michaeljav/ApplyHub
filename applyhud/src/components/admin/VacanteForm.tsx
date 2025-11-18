@@ -24,6 +24,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UploadFile } from 'antd/es/upload/interface';
+import { isMultipleDocumentoAllowed } from '@/lib/documentos';
 
 type DocumentoTipo =
   | 'CEDULA'
@@ -38,6 +39,7 @@ type DocumentoFormValue = {
   obligatorio?: boolean;
   orden?: number;
   tipoDocumento?: DocumentoTipo;
+  multipleDocumento?: boolean;
 };
 
 type VacanteDocumentoData = {
@@ -47,6 +49,7 @@ type VacanteDocumentoData = {
   obligatorio: boolean;
   orden: number;
   tipoDocumento: DocumentoTipo;
+  multipleDocumento: boolean;
 };
 
 type VacanteDetalle = {
@@ -96,7 +99,8 @@ const DOCUMENTO_OPTIONS: { label: string; value: DocumentoTipo }[] = [
 const createEmptyDoc = (orden = 1): DocumentoFormValue => ({
   obligatorio: orden === 1,
   orden,
-  tipoDocumento: 'OTRO'
+  tipoDocumento: 'OTRO',
+  multipleDocumento: false
 });
 
 const normalizeDocForForm = (
@@ -106,7 +110,8 @@ const normalizeDocForForm = (
   ...createEmptyDoc(index + 1),
   ...doc,
   orden: doc.orden ?? index + 1,
-  tipoDocumento: doc.tipoDocumento ?? 'OTRO'
+  tipoDocumento: doc.tipoDocumento ?? 'OTRO',
+  multipleDocumento: Boolean(doc.multipleDocumento)
 });
 
 const buildDefaultDocs = () =>
@@ -164,6 +169,7 @@ type SavePayload = {
     obligatorio: boolean;
     orden: number;
     tipoDocumento: DocumentoTipo;
+    multipleDocumento: boolean;
   }>;
 };
 
@@ -223,7 +229,8 @@ export default function VacanteForm({
             descripcion: doc.descripcion ?? undefined,
             obligatorio: doc.obligatorio,
             orden: doc.orden,
-            tipoDocumento: doc.tipoDocumento
+            tipoDocumento: doc.tipoDocumento,
+            multipleDocumento: doc.multipleDocumento
           },
           index
         )
@@ -347,13 +354,21 @@ export default function VacanteForm({
           tipoDocumento: doc.tipoDocumento ?? 'OTRO'
         })) ?? [];
 
-    const documentos = docsFromForm.map((doc, index) => ({
-      nombre: nombreAutomatico(doc),
-      descripcion: doc.descripcion?.trim() || null,
-      obligatorio: Boolean(doc.obligatorio),
-      orden: typeof doc.orden === 'number' ? doc.orden : index + 1,
-      tipoDocumento: doc.tipoDocumento ?? 'OTRO'
-    }));
+    const documentos = docsFromForm.map((doc, index) => {
+      const tipoDocumento = doc.tipoDocumento ?? 'OTRO';
+      const multipleDocumento =
+        Boolean(doc.multipleDocumento) &&
+        isMultipleDocumentoAllowed(tipoDocumento);
+
+      return {
+        nombre: nombreAutomatico(doc),
+        descripcion: doc.descripcion?.trim() || null,
+        obligatorio: Boolean(doc.obligatorio),
+        orden: typeof doc.orden === 'number' ? doc.orden : index + 1,
+        tipoDocumento,
+        multipleDocumento
+      };
+    });
 
     const payload: SavePayload = {
       titulo: values.titulo.trim(),
@@ -423,6 +438,47 @@ export default function VacanteForm({
           <div style={{ marginBottom: 12, fontSize: 12, color: '#555' }}>
             Nombre automático: {nombreAutomatico(docValues)}
           </div>
+        );
+      }}
+    </Form.Item>
+  );
+
+  const renderMultipleDocumentoField = (fieldIndex: number) => (
+    <Form.Item
+      noStyle
+      shouldUpdate={(prevValues, currentValues) => {
+        const prevTipo =
+          prevValues?.documentos?.[fieldIndex]?.tipoDocumento ?? 'OTRO';
+        const nextTipo =
+          currentValues?.documentos?.[fieldIndex]?.tipoDocumento ?? 'OTRO';
+        const prevValue =
+          prevValues?.documentos?.[fieldIndex]?.multipleDocumento ?? false;
+        const nextValue =
+          currentValues?.documentos?.[fieldIndex]?.multipleDocumento ?? false;
+        return prevTipo !== nextTipo || prevValue !== nextValue;
+      }}
+    >
+      {() => {
+        const docValues = (form.getFieldValue(['documentos', fieldIndex]) ||
+          {}) as DocumentoFormValue;
+        const tipoActual = docValues.tipoDocumento ?? 'OTRO';
+        if (!isMultipleDocumentoAllowed(tipoActual)) {
+          return null;
+        }
+        const label =
+          tipoActual === 'TITULO'
+            ? 'Permitir multiples titulos'
+            : 'Permitir multiples certificados';
+        return (
+          <Form.Item
+            label={label}
+            name={[fieldIndex, 'multipleDocumento']}
+            valuePropName="checked"
+          >
+            <Checkbox>
+              Permitir que el postulante agregue mas de uno
+            </Checkbox>
+          </Form.Item>
         );
       }}
     </Form.Item>
@@ -575,6 +631,8 @@ export default function VacanteForm({
                     >
                       <Switch />
                     </Form.Item>
+
+                    {renderMultipleDocumentoField(field.name)}
 
                     {/* <Form.Item
                       label={
