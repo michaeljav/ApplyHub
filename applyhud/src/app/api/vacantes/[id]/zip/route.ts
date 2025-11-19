@@ -11,12 +11,42 @@ interface Params {
 
 const cwd = process.cwd();
 
+const APP_PREFIX_REGEX = /^[\\/]*app[\\/]/i;
+
 function resolveAbsolutePath(ruta: string | null) {
   if (!ruta) return null;
-  if (path.isAbsolute(ruta)) {
-    return path.normalize(ruta);
+  const normalized = path.normalize(ruta);
+  const candidates: string[] = [];
+
+  if (path.isAbsolute(normalized)) {
+    candidates.push(normalized);
+  } else {
+    candidates.push(path.join(cwd, normalized));
   }
-  return path.normalize(path.join(cwd, ruta));
+
+  const trimmed = normalized.replace(/^[\\/]+/, '');
+  if (trimmed && trimmed !== normalized) {
+    candidates.push(path.join(cwd, trimmed));
+  }
+
+  if (APP_PREFIX_REGEX.test(normalized) || APP_PREFIX_REGEX.test(trimmed)) {
+    const withoutApp = trimmed.replace(/^app[\\/]/i, '');
+    if (withoutApp) {
+      candidates.push(path.join(cwd, withoutApp));
+    }
+  }
+
+  const ensureAbsolute = (value: string) =>
+    path.isAbsolute(value) ? value : path.join(cwd, value);
+
+  for (const candidate of candidates) {
+    const resolved = ensureAbsolute(candidate);
+    if (fs.existsSync(resolved)) {
+      return path.normalize(resolved);
+    }
+  }
+
+  return null;
 }
 
 export async function GET(_: Request, { params }: Params) {
@@ -41,12 +71,7 @@ export async function GET(_: Request, { params }: Params) {
     for (const archivo of post.archivos) {
       const absolutePath = resolveAbsolutePath(archivo.ruta ?? null);
       if (!absolutePath) {
-        missingFiles.push(`Ruta inválida (archivo ${archivo.id})`);
-        continue;
-      }
-
-      if (!fs.existsSync(absolutePath)) {
-        missingFiles.push(absolutePath);
+        missingFiles.push(archivo.ruta ?? `Ruta inválida (archivo ${archivo.id})`);
         continue;
       }
 
@@ -62,13 +87,15 @@ export async function GET(_: Request, { params }: Params) {
   }
 
   if (missingFiles.length > 0) {
-    console.error(
-      `No se pudieron incluir ${missingFiles.length} archivos en el ZIP de la vacante ${id}`,
-      missingFiles
-    );
-    return NextResponse.json(
-      { error: 'Faltan archivos para generar el ZIP. Revisa la consola.' },
-      { status: 500 }
+    const warning = [
+      `No se pudieron incluir ${missingFiles.length} archivos en el ZIP de la vacante ${id}.`,
+      'Listado de rutas:',
+      ...missingFiles
+    ].join('\n');
+    console.warn(warning);
+    zip.file(
+      'AVISO-ARCHIVOS-FALTANTES.txt',
+      `${warning}\n\nEl resto de documentos disponibles fue incluido correctamente.`
     );
   }
 

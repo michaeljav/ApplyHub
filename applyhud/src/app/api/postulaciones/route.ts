@@ -44,6 +44,41 @@ const getStringFromForm = (form: FormData, key: string) => {
   return value == null ? '' : String(value);
 };
 
+const MULTIPLE_DOCUMENTO_TIPOS = new Set<DocumentoTipo>([
+  'TITULO',
+  'CERTIFICADO_LABORAL'
+]);
+
+const canUseMultipleEntradas = (
+  tipo: DocumentoTipo,
+  multiple: boolean
+) => multiple && MULTIPLE_DOCUMENTO_TIPOS.has(tipo);
+
+const collectEntryNames = (
+  docId: number,
+  tipo: DocumentoTipo,
+  multiple: boolean,
+  keys: string[]
+) => {
+  const baseName = `doc_${docId}`;
+  if (!canUseMultipleEntradas(tipo, multiple)) {
+    return [baseName];
+  }
+  const seen = new Set<string>([baseName]);
+  const entries = [baseName];
+  const prefix = `${baseName}__extra_`;
+  for (const key of keys) {
+    if (!key.startsWith(prefix)) continue;
+    const lastUnderscore = key.lastIndexOf('_');
+    if (lastUnderscore === -1) continue;
+    const entryName = key.slice(0, lastUnderscore);
+    if (seen.has(entryName)) continue;
+    seen.add(entryName);
+    entries.push(entryName);
+  }
+  return entries;
+};
+
 type ArchivoPendiente = {
   archivo: Blob;
   nombreLogico: string;
@@ -62,6 +97,7 @@ const HUMAN_CONFIRMATION_TEXT = 'SOY HUMANO';
 export async function POST(req: Request) {
   try {
     const form = await req.formData();
+    const formKeys = Array.from(form.keys());
 
     const vacanteId = Number(form.get('vacanteId'));
     const nombres = String(form.get('nombres') || '');
@@ -137,177 +173,189 @@ export async function POST(req: Request) {
     const docs = vacante.documentosRequeridos;
     const archivosPendientes: ArchivoPendiente[] = [];
     for (const doc of docs) {
-      const baseName = `doc_${doc.id}`;
+      const entryNames = collectEntryNames(
+        doc.id,
+        doc.tipoDocumento,
+        Boolean(doc.multipleDocumento),
+        formKeys
+      );
 
-      switch (doc.tipoDocumento) {
-        case 'CEDULA': {
-          const frontal = getFileFromForm(form, `${baseName}_frontal`);
-          const reverso = getFileFromForm(form, `${baseName}_reverso`);
-          const alguno = Boolean(frontal || reverso);
-          const ambos = Boolean(frontal && reverso);
+      for (let index = 0; index < entryNames.length; index++) {
+        const baseName = entryNames[index];
+        const requerido = doc.obligatorio && index === 0;
+        const entryLabel =
+          index === 0 ? doc.nombre : `${doc.nombre} (Adicional ${index + 1})`;
 
-          if (doc.obligatorio && !ambos) {
-            return NextResponse.json(
-              { error: `Debes subir ambas caras de la cedula: ${doc.nombre}` },
-              { status: 400 }
-            );
+        switch (doc.tipoDocumento) {
+          case 'CEDULA': {
+            const frontal = getFileFromForm(form, `${baseName}_frontal`);
+            const reverso = getFileFromForm(form, `${baseName}_reverso`);
+            const alguno = Boolean(frontal || reverso);
+            const ambos = Boolean(frontal && reverso);
+
+            if (requerido && !ambos) {
+              return NextResponse.json(
+                { error: `Debes subir ambas caras de la cedula: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (!requerido && alguno && !ambos) {
+              return NextResponse.json(
+                { error: `Debes subir ambas caras de la cedula: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (frontal) {
+              archivosPendientes.push({
+                archivo: frontal,
+                nombreLogico: `${entryLabel} - frontal`,
+                tipoDocumento: doc.tipoDocumento,
+                caraCedula: 'FRONTAL'
+              });
+            }
+
+            if (reverso) {
+              archivosPendientes.push({
+                archivo: reverso,
+                nombreLogico: `${entryLabel} - reverso`,
+                tipoDocumento: doc.tipoDocumento,
+                caraCedula: 'REVERSO'
+              });
+            }
+            continue;
           }
+          case 'TITULO': {
+            const grado = getStringFromForm(form, `${baseName}_grado`).trim();
+            const estadoGraduado = getStringFromForm(form, `${baseName}_graduado`).trim();
+            const tituloNombre = getStringFromForm(form, `${baseName}_nombre`).trim();
+            const archivoTitulo = getFileFromForm(form, `${baseName}_archivo`);
 
-          if (!doc.obligatorio && alguno && !ambos) {
-            return NextResponse.json(
-              { error: `Debes subir ambas caras de la cedula: ${doc.nombre}` },
-              { status: 400 }
-            );
+            const tieneDatos =
+              Boolean(grado) ||
+              Boolean(estadoGraduado) ||
+              Boolean(tituloNombre) ||
+              Boolean(archivoTitulo);
+            const completos =
+              Boolean(grado) &&
+              Boolean(estadoGraduado) &&
+              Boolean(tituloNombre) &&
+              Boolean(archivoTitulo);
+
+            if (requerido && !completos) {
+              return NextResponse.json(
+                { error: `Faltan datos del titulo para: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (!requerido && tieneDatos && !completos) {
+              return NextResponse.json(
+                { error: `Completa todos los campos del titulo: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (archivoTitulo) {
+              archivosPendientes.push({
+                archivo: archivoTitulo,
+                nombreLogico: tituloNombre || entryLabel,
+                tipoDocumento: doc.tipoDocumento,
+                tituloNivel: grado || null,
+                graduado: estadoGraduado || null
+              });
+            }
+            continue;
           }
+          case 'CERTIFICADO_LABORAL': {
+            const institucion = getStringFromForm(
+              form,
+              `${baseName}_institucion`
+            ).trim();
+            const cargo = getStringFromForm(form, `${baseName}_cargo`).trim();
+            const fechaInicioStr = getStringFromForm(
+              form,
+              `${baseName}_fechaInicio`
+            ).trim();
+            const fechaFinStr = getStringFromForm(
+              form,
+              `${baseName}_fechaFin`
+            ).trim();
+            const archivoCert = getFileFromForm(form, `${baseName}_archivo`);
 
-          if (frontal) {
+            const tieneDatos =
+              Boolean(institucion) ||
+              Boolean(cargo) ||
+              Boolean(fechaInicioStr) ||
+              Boolean(fechaFinStr) ||
+              Boolean(archivoCert);
+            const completos =
+              Boolean(institucion) &&
+              Boolean(cargo) &&
+              Boolean(fechaInicioStr) &&
+              Boolean(fechaFinStr) &&
+              Boolean(archivoCert);
+            const fechaInicioDate = fechaInicioStr ? new Date(fechaInicioStr) : null;
+            const fechaFinDate = fechaFinStr ? new Date(fechaFinStr) : null;
+            const fechasValidas =
+              (!fechaInicioStr || (fechaInicioDate && !Number.isNaN(fechaInicioDate.getTime()))) &&
+              (!fechaFinStr || (fechaFinDate && !Number.isNaN(fechaFinDate.getTime())));
+
+            if (!fechasValidas) {
+              return NextResponse.json(
+                { error: `Fechas invalidas en la certificacion: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (requerido && !completos) {
+              return NextResponse.json(
+                { error: `Faltan datos de la certificacion laboral: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (!requerido && tieneDatos && !completos) {
+              return NextResponse.json(
+                { error: `Completa todos los campos del certificado: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (archivoCert) {
+              archivosPendientes.push({
+                archivo: archivoCert,
+                nombreLogico: entryLabel,
+                tipoDocumento: doc.tipoDocumento,
+                institucion: institucion || null,
+                cargo: cargo || null,
+                fechaInicio: fechaInicioDate,
+                fechaFin: fechaFinDate
+              });
+            }
+            continue;
+          }
+          default: {
+            const archivo =
+              getFileFromForm(form, `${baseName}_archivo`) ||
+              getFileFromForm(form, baseName);
+
+            if (requerido && !archivo) {
+              return NextResponse.json(
+                { error: `Falta documento obligatorio: ${entryLabel}` },
+                { status: 400 }
+              );
+            }
+
+            if (!archivo) continue;
+
             archivosPendientes.push({
-              archivo: frontal,
-              nombreLogico: `${doc.nombre} - frontal`,
-              tipoDocumento: doc.tipoDocumento,
-              caraCedula: 'FRONTAL'
+              archivo,
+              nombreLogico: entryLabel,
+              tipoDocumento: doc.tipoDocumento
             });
           }
-
-          if (reverso) {
-            archivosPendientes.push({
-              archivo: reverso,
-              nombreLogico: `${doc.nombre} - reverso`,
-              tipoDocumento: doc.tipoDocumento,
-              caraCedula: 'REVERSO'
-            });
-          }
-          continue;
-        }
-        case 'TITULO': {
-          const grado = getStringFromForm(form, `${baseName}_grado`).trim();
-          const estadoGraduado = getStringFromForm(form, `${baseName}_graduado`).trim();
-          const tituloNombre = getStringFromForm(form, `${baseName}_nombre`).trim();
-          const archivoTitulo = getFileFromForm(form, `${baseName}_archivo`);
-
-          const tieneDatos =
-            Boolean(grado) ||
-            Boolean(estadoGraduado) ||
-            Boolean(tituloNombre) ||
-            Boolean(archivoTitulo);
-          const completos =
-            Boolean(grado) &&
-            Boolean(estadoGraduado) &&
-            Boolean(tituloNombre) &&
-            Boolean(archivoTitulo);
-
-          if (doc.obligatorio && !completos) {
-            return NextResponse.json(
-              { error: `Faltan datos del titulo para: ${doc.nombre}` },
-              { status: 400 }
-            );
-          }
-
-          if (!doc.obligatorio && tieneDatos && !completos) {
-            return NextResponse.json(
-              { error: `Completa todos los campos del titulo: ${doc.nombre}` },
-              { status: 400 }
-            );
-          }
-
-          if (archivoTitulo) {
-            archivosPendientes.push({
-              archivo: archivoTitulo,
-              nombreLogico: tituloNombre || doc.nombre,
-              tipoDocumento: doc.tipoDocumento,
-              tituloNivel: grado || null,
-              graduado: estadoGraduado || null
-            });
-          }
-          continue;
-        }
-        case 'CERTIFICADO_LABORAL': {
-          const institucion = getStringFromForm(
-            form,
-            `${baseName}_institucion`
-          ).trim();
-          const cargo = getStringFromForm(form, `${baseName}_cargo`).trim();
-          const fechaInicioStr = getStringFromForm(
-            form,
-            `${baseName}_fechaInicio`
-          ).trim();
-          const fechaFinStr = getStringFromForm(
-            form,
-            `${baseName}_fechaFin`
-          ).trim();
-          const archivoCert = getFileFromForm(form, `${baseName}_archivo`);
-
-          const tieneDatos =
-            Boolean(institucion) ||
-            Boolean(cargo) ||
-            Boolean(fechaInicioStr) ||
-            Boolean(fechaFinStr) ||
-            Boolean(archivoCert);
-          const completos =
-            Boolean(institucion) &&
-            Boolean(cargo) &&
-            Boolean(fechaInicioStr) &&
-            Boolean(fechaFinStr) &&
-            Boolean(archivoCert);
-          const fechaInicioDate = fechaInicioStr ? new Date(fechaInicioStr) : null;
-          const fechaFinDate = fechaFinStr ? new Date(fechaFinStr) : null;
-          const fechasValidas =
-            (!fechaInicioStr || (fechaInicioDate && !Number.isNaN(fechaInicioDate.getTime()))) &&
-            (!fechaFinStr || (fechaFinDate && !Number.isNaN(fechaFinDate.getTime())));
-
-          if (!fechasValidas) {
-            return NextResponse.json(
-              { error: `Fechas invalidas en la certificacion: ${doc.nombre}` },
-              { status: 400 }
-            );
-          }
-
-          if (doc.obligatorio && !completos) {
-            return NextResponse.json(
-              { error: `Faltan datos de la certificacion laboral: ${doc.nombre}` },
-              { status: 400 }
-            );
-          }
-
-          if (!doc.obligatorio && tieneDatos && !completos) {
-            return NextResponse.json(
-              { error: `Completa todos los campos del certificado: ${doc.nombre}` },
-              { status: 400 }
-            );
-          }
-
-          if (archivoCert) {
-            archivosPendientes.push({
-              archivo: archivoCert,
-              nombreLogico: doc.nombre,
-              tipoDocumento: doc.tipoDocumento,
-              institucion: institucion || null,
-              cargo: cargo || null,
-              fechaInicio: fechaInicioDate,
-              fechaFin: fechaFinDate
-            });
-          }
-          continue;
-        }
-        default: {
-          const archivo =
-            getFileFromForm(form, `${baseName}_archivo`) ||
-            getFileFromForm(form, baseName);
-
-          if (doc.obligatorio && !archivo) {
-            return NextResponse.json(
-              { error: `Falta documento obligatorio: ${doc.nombre}` },
-              { status: 400 }
-            );
-          }
-
-          if (!archivo) continue;
-
-          archivosPendientes.push({
-            archivo,
-            nombreLogico: doc.nombre,
-            tipoDocumento: doc.tipoDocumento
-          });
         }
       }
     }
