@@ -1,4 +1,4 @@
-🟦 1. pgweb (Runs in browser – portable)
+🟦 1. pgweb (Runs in browser – portable) ver postgress en linea web
 
 A single executable you run once and it opens a browser UI.
 
