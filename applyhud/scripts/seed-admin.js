@@ -6,8 +6,8 @@ const INSERT_ADMIN_SQL = `
 INSERT INTO "Usuario" ("nombre", "email", "password", "rol", "activo", "createdAt", "updatedAt")
 VALUES (
   'Admin IAD',
-  'admin@iad.gob.do',
-  '$2a$10$yfKBtMfXPADmlGhUS6OaYu.7KR8jtGXTzI4lDcwBHfWCQGi0RklH6',
+  'admiadhr@iad.gob.do',
+  '$2a$10$LOR7HvRgQ4O.x.Al91wKM.7DBFfDCCHleBCFagu/NgjY29JBg2fm.',
   'ADMIN',
   true,
   NOW(),
